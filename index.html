@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>PortalNow — Quản lý tài chính học tập</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<!-- Firebase (bản compat — giữ nguyên các hàm onclick="..." toàn cục có sẵn trong file) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-analytics-compat.js"></script>
+<style>
+:root{
+  --navy:#3457D8;
+  --navy-2:#22348F;
+  --gold:#C1832A;
+  --gold-2:#E3AC55;
+  --bg:#F3F5FA;
+  --surface:#FFFFFF;
+  --surface-alt:#EEF1F9;
+  --text:#171A2E;
+  --text-2:#666B85;
+  --line:#E2E5F0;
+  --accent:#2A46C4;
+  --ok:#0EA57C;
+  --warn:#C97A1E;
+  --danger:#D6483F;
+  --ad-blue:linear-gradient(135deg,#22348F,#3457D8);
+  --ad-teal:linear-gradient(135deg,#0F6656,#159179);
+  --ad-amber:linear-gradient(135deg,#8A5A12,#C1832A);
+  --ad-rose:linear-gradient(135deg,#7A2E42,#B14C5C);
+  --ad-violet:linear-gradient(135deg,#4A2E7A,#6E4FA6);
+  --ad-slate:linear-gradient(135deg,#33394D,#4A5270);
+  --r-lg:18px;
+  --r-md:12px;
+  --r-sm:8px;
+  --shadow:0 8px 20px rgba(23,26,46,.08);
+}
+/* Bảng màu chế độ tối: không tái dùng tông trắng/xanh của giao diện sáng —
+   nâng độ sáng của xanh chủ đạo và hạ độ chói của nền để dễ nhìn ban đêm.
+   Toàn bộ component bên dưới dùng biến màu nên tự đổi theo, không cần
+   override thủ công từng phần tử như trước (tránh trùng lặp code). */
+@media (prefers-color-scheme: dark){
+  :root{
+    --navy:#4C6FE0;
+    --navy-2:#33449D;
+    --gold:#E8B85C;
+    --gold-2:#F2CE84;
+    --accent:#93AAFF;
+    --bg:#11131D;
+    --surface:#1A1D2C;
+    --surface-alt:#242840;
+    --text:#EDEFF9;
+    --text-2:#9CA0BF;
+    --line:#2E3350;
+    --ok:#34C99A;
+    --warn:#E8A34D;
+    --danger:#F1655F;
+    --ad-blue:linear-gradient(135deg,#2C41AA,#4C6FE0);
+    --ad-teal:linear-gradient(135deg,#136B58,#1DA98C);
+    --ad-amber:linear-gradient(135deg,#9C6B1D,#D19A3E);
+    --ad-rose:linear-gradient(135deg,#8E3850,#C05F72);
+    --ad-violet:linear-gradient(135deg,#5B3A96,#7C5CC4);
+    --ad-slate:linear-gradient(135deg,#3D4460,#565F85);
+    --shadow:0 10px 24px rgba(0,0,0,.45);
+  }
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+body{padding-bottom:78px; min-height:100vh;}
+h1,h2,h3,h4{font-family:'Space Grotesk','Inter',sans-serif; margin:0;}
+button{font-family:inherit; cursor:pointer; border:none; outline:none;}
+input,select,textarea{font-family:inherit; width:100%; padding:11px 13px; border-radius:var(--r-sm); border:1.5px solid var(--line); background:var(--surface); font-size:14px; color:var(--text);}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+label.f-label{display:block; font-size:12px; font-weight:600; color:var(--text-2); margin:10px 0 5px;}
+.hidden{display:none !important;}
+.wrap{max-width:520px; margin:0 auto; padding:0 14px;}
+.btn{padding:13px 16px; border-radius:12px; font-weight:700; font-size:14.5px; letter-spacing:.2px;}
+.btn-primary{background:linear-gradient(135deg,var(--navy),var(--navy-2)); color:#fff; box-shadow:0 8px 18px rgba(27,33,89,.25);}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-2)); color:#3A2A00; box-shadow:0 8px 18px rgba(214,164,41,.3);}
+.btn-ghost{background:var(--surface-alt); color:var(--accent);}
+.btn-ok{background:var(--ok); color:#fff;}
+.btn-danger{background:var(--danger); color:#fff;}
+.btn-sm{padding:8px 12px; border-radius:9px; font-size:12.5px; font-weight:700;}
+.btn:disabled{opacity:.45; cursor:not-allowed;}
+.card{background:var(--surface); border-radius:var(--r-lg); padding:16px; box-shadow:var(--shadow); margin-bottom:14px;}
+.row{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.chip{display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:100px; font-size:11.5px; font-weight:700;}
+.chip-ok{background:color-mix(in srgb, var(--ok) 16%, var(--surface)); color:var(--ok);}
+.chip-warn{background:color-mix(in srgb, var(--warn) 16%, var(--surface)); color:var(--warn);}
+.chip-danger{background:color-mix(in srgb, var(--danger) 16%, var(--surface)); color:var(--danger);}
+.muted{color:var(--text-2); font-size:12.5px;}
+.divider{height:1px; background:var(--line); margin:12px 0;}
+
+/* ---------- Header ---------- */
+.topbar{background:linear-gradient(135deg,var(--navy) 0%, var(--navy-2) 100%); color:#fff; padding:22px 14px 46px; position:relative; overflow:hidden;}
+.topbar::after{content:'';position:absolute; right:-40px; top:-40px; width:160px; height:160px; border-radius:50%; background:radial-gradient(circle, rgba(214,164,41,.35), transparent 70%);}
+.topbar-inner{max-width:520px; margin:0 auto; position:relative; z-index:1;}
+.brand{font-size:11.5px; letter-spacing:2px; opacity:.75; font-weight:700; text-transform:uppercase;}
+.brand-title{font-size:20px; font-weight:800; margin-top:3px;}
+.who{margin-top:14px; display:flex; gap:10px; align-items:center;}
+.who-avatar{width:44px; height:44px; border-radius:14px; background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:20px;}
+.who-name{font-weight:700; font-size:15px;}
+.who-sub{font-size:12px; opacity:.8;}
+.logout-btn{position:absolute; top:0; right:0; background:rgba(255,255,255,.15); color:#fff; padding:7px 12px; border-radius:100px; font-size:11.5px; font-weight:700;}
+.content-pull{margin-top:-30px; position:relative; z-index:2;}
+
+/* ---------- Ads ---------- */
+.ads-scroll{display:flex; gap:10px; overflow-x:auto; padding:2px 2px 8px; scroll-snap-type:x mandatory;}
+.ads-scroll::-webkit-scrollbar{display:none;}
+.ad-card{min-width:88%; scroll-snap-align:start; border-radius:16px; padding:16px; color:#fff; position:relative; box-shadow:var(--shadow);}
+.ad-icon{font-size:22px;}
+.ad-title{font-weight:800; font-size:15px; margin-top:6px;}
+.ad-content{font-size:12.5px; opacity:.9; margin-top:3px;}
+.dots{display:flex; gap:5px; justify-content:center; margin-top:6px;}
+.dot{width:6px; height:6px; border-radius:50%; background:var(--line);}
+.dot.active{background:var(--accent); width:16px; border-radius:4px;}
+
+/* ---------- Bottom nav ---------- */
+.bottom-nav{position:fixed; left:0; right:0; bottom:0; background:var(--surface); border-top:1px solid var(--line); display:flex; z-index:50; box-shadow:0 -6px 20px rgba(0,0,0,.12);}
+.nav-item{flex:1; text-align:center; padding:9px 4px 10px; background:none; color:var(--text-2); font-size:11px; font-weight:600;}
+.nav-item .ic{font-size:19px; display:block; margin-bottom:2px;}
+.nav-item.active{color:var(--accent);}
+
+/* ---------- Tuition card ---------- */
+.tuition-hero{background:linear-gradient(135deg,var(--navy) 0%, var(--navy-2) 100%); border-radius:var(--r-lg); padding:18px; color:#fff; box-shadow:var(--shadow);}
+.tuition-line.plain{color:var(--text); border-bottom-color:var(--line);}
+.tuition-hero .label{font-size:11.5px; opacity:.75; letter-spacing:1px; text-transform:uppercase; font-weight:700;}
+.tuition-line{display:flex; justify-content:space-between; font-size:13.5px; padding:6px 0; border-bottom:1px dashed rgba(255,255,255,.18);}
+.tuition-line:last-of-type{border-bottom:none;}
+.tuition-total{font-size:22px; font-weight:800; margin-top:8px;}
+
+/* ---------- VIP ---------- */
+.vip-ring-wrap{display:flex; justify-content:center; padding:8px 0 4px;}
+.vip-progress-track{background:var(--surface-alt); border-radius:100px; height:10px; overflow:hidden;}
+.vip-progress-fill{height:100%; background:linear-gradient(90deg,var(--gold),var(--gold-2)); border-radius:100px; transition:width .4s;}
+.tier-badge{font-size:26px;}
+.accordion-head{display:flex; justify-content:space-between; align-items:center; padding:13px 4px; cursor:pointer; font-weight:700; font-size:14px;}
+.accordion-body{padding:0 4px 12px; font-size:13px; color:var(--text-2); display:none;}
+.accordion.open .accordion-body{display:block;}
+.accordion.open .accordion-arrow{transform:rotate(180deg);}
+.accordion-arrow{transition:.2s;}
+
+/* ---------- Shop ---------- */
+.prod-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.prod-card{background:var(--surface); border-radius:14px; overflow:hidden; box-shadow:var(--shadow);}
+.prod-img{width:100%; height:100px; object-fit:cover; background:var(--surface-alt);}
+.prod-body{padding:10px;}
+.prod-name{font-weight:700; font-size:13px; line-height:1.3; min-height:34px;}
+.prod-price{color:var(--accent); font-weight:800; font-size:14px; margin-top:4px;}
+.prod-price s{color:var(--text-2); font-weight:500; font-size:11.5px; margin-right:4px;}
+
+/* ---------- Modal ---------- */
+.modal-backdrop{position:fixed; inset:0; background:rgba(20,22,50,.55); z-index:100; display:flex; align-items:flex-end; justify-content:center;}
+.modal-backdrop.center{align-items:center; padding:16px;}
+.modal-sheet{background:var(--surface); width:100%; max-width:520px; border-radius:20px 20px 0 0; padding:18px 16px 24px; max-height:92vh; overflow-y:auto; animation:slideUp .22s ease;}
+.modal-backdrop.center .modal-sheet{border-radius:18px;}
+@keyframes slideUp{from{transform:translateY(24px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+.modal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+.modal-close{background:var(--surface-alt); width:30px; height:30px; border-radius:50%; font-size:15px; color:var(--text-2);}
+.red-note{color:var(--danger); font-size:12.5px; font-weight:700; background:color-mix(in srgb, var(--danger) 14%, var(--surface)); padding:9px 11px; border-radius:9px; margin:8px 0;}
+.qr-box{display:flex; justify-content:center; padding:10px 0;}
+.qr-box img{width:190px; height:190px; border-radius:12px; border:1px solid var(--line);}
+
+/* ---------- Toast ---------- */
+#toast-wrap{position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px; align-items:center;}
+.toast{background:#1B1F3B; color:#fff; padding:11px 16px; border-radius:100px; font-size:13px; font-weight:600; box-shadow:0 6px 18px rgba(0,0,0,.2); animation:fadeIn .2s;}
+.toast.err{background:var(--danger);}
+.toast.ok{background:var(--ok);}
+@keyframes fadeIn{from{opacity:0; transform:translateY(-6px);} to{opacity:1;}}
+
+/* ---------- Login ---------- */
+.login-screen{min-height:100vh; background:linear-gradient(160deg,var(--navy-2) 0%, var(--navy) 100%); display:flex; align-items:center; padding:26px 18px; position:relative; overflow:hidden;}
+.login-screen::before{content:'';position:absolute; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle, rgba(230,180,90,.35), transparent 70%); top:-80px; right:-80px;}
+.login-card{position:relative; z-index:1; background:var(--surface); border-radius:22px; padding:28px 22px; max-width:420px; margin:0 auto; width:100%; box-shadow:0 20px 50px rgba(0,0,0,.3);}
+.login-eyebrow{font-size:11px; letter-spacing:2.5px; color:var(--gold); font-weight:800; text-transform:uppercase;}
+.login-title{font-size:21px; font-weight:800; margin-top:6px; line-height:1.35; color:var(--text);}
+.login-sub{font-size:12.5px; color:var(--text-2); margin-top:4px;}
+
+/* ---------- Admin ---------- */
+.admin-tabs{display:flex; gap:8px; overflow-x:auto; padding:2px 0 10px;}
+.admin-tabs::-webkit-scrollbar{display:none;}
+.admin-tab{position:relative; white-space:nowrap; padding:9px 14px; border-radius:100px; background:var(--surface-alt); font-size:12.5px; font-weight:700; color:var(--text-2);}
+.admin-tab.active{background:var(--navy); color:#fff;}
+.tab-badge{position:absolute; top:-4px; right:-2px; background:var(--danger); color:#fff; font-size:10px; font-weight:800; min-width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0 3px; line-height:1; box-shadow:0 0 0 2px var(--bg);}
+.pkg-row{border:1.5px solid var(--line); border-radius:var(--r-md); padding:12px; margin-bottom:10px;}
+.pkg-month-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}
+.pkg-month-btn{background:var(--surface-alt); color:var(--accent); border-radius:10px; padding:10px 8px; font-size:12.5px; font-weight:700; text-align:center;}
+.list-row{display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--line);}
+.list-row:last-child{border-bottom:none;}
+.list-row .meta{font-size:12px; color:var(--text-2);}
+.section-title{font-size:15px; font-weight:800; margin:4px 0 10px;}
+.thumb-row{display:flex; gap:6px; overflow-x:auto; margin:8px 0;}
+.thumb-row img{width:56px; height:56px; object-fit:cover; border-radius:8px; border:1px solid var(--line);}
+.empty-state{text-align:center; padding:26px 10px; color:var(--text-2); font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="toast-wrap"></div>
+
+<!-- ================= LOGIN ================= -->
+<div id="screen-login" class="login-screen">
+  <div class="login-card">
+    <div class="login-eyebrow">Thuộc quản lý của Tiyi - PortalNow</div>
+    <div class="login-title">Quản lý tài chính<br>học tập của bạn</div>
+
+    <!-- --- Đăng nhập Học viên / Giáo viên (bằng UID) --- -->
+    <div id="login-mode-uid">
+      <div class="login-sub">Đăng nhập bằng tài khoản (UID) được cấp bởi trung tâm.</div>
+      <label class="f-label">Nhập tài khoản</label>
+      <input id="login-uid" placeholder=".pn/.tpn" autocomplete="off">
+      <button class="btn btn-primary" id="login-uid-btn" style="width:100%; margin-top:16px;" onclick="handleLoginTap()">ĐĂNG NHẬP</button>
+    </div>
+
+    <!-- --- Đăng nhập Admin (bằng Email/Password Firebase) ---
+         Bí mật: chạm nút ĐĂNG NHẬP 5 lần liên tiếp để hiện form này ra. --->
+    <div id="login-mode-admin" class="hidden">
+      <div class="login-sub">Đăng nhập quản trị viên bằng Email/Mật khẩu.</div>
+      <label class="f-label">Email</label>
+      <input id="login-admin-email" type="email" placeholder="@tiyi.com" autocomplete="off">
+      <label class="f-label">Mật khẩu</label>
+      <input id="login-admin-pass" type="password" placeholder="••••••••" autocomplete="off">
+      <button class="btn btn-primary" id="login-admin-btn" style="width:100%; margin-top:16px;" onclick="doAdminLogin()">ĐĂNG NHẬP ADMIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= HỌC VIÊN ================= -->
+<div id="screen-hv" class="hidden">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <button class="logout-btn" onclick="doLogout()">Đăng xuất</button>
+      <div class="brand">PortalNow</div>
+      <div class="brand-title">Tài chính học tập</div>
+      <div class="who">
+        <div class="who-avatar">🎓</div>
+        <div>
+          <div class="who-name" id="hv-name">—</div>
+          <div class="who-sub">Lớp: <span id="hv-class">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap content-pull" id="hv-content"></div>
+  <div class="bottom-nav">
+    <button class="nav-item" data-tab="home" onclick="hvSwitchTab('home')"><span class="ic">🏠</span>Trang chủ</button>
+    <button class="nav-item" data-tab="shop" onclick="hvSwitchTab('shop')"><span class="ic">🛍️</span>Mua hàng</button>
+    <button class="nav-item" data-tab="vip" onclick="hvSwitchTab('vip')"><span class="ic">👑</span>VIP</button>
+    <button class="nav-item" data-tab="point" onclick="hvSwitchTab('point')"><span class="ic">🪙</span>PN-Point</button>
+    <button class="nav-item" data-tab="respkg" onclick="hvSwitchTab('respkg')"><span class="ic">📦</span>Gói TN</button>
+  </div>
+</div>
+
+<!-- ================= GIÁO VIÊN ================= -->
+<div id="screen-teacher" class="hidden">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <button class="logout-btn" onclick="doLogout()">Đăng xuất</button>
+      <div class="brand">PortalNow</div>
+      <div class="brand-title">Tài chính học tập</div>
+      <div class="who">
+        <div class="who-avatar">🧑‍🏫</div>
+        <div>
+          <div class="who-name" id="tc-name">—</div>
+          <div class="who-sub">SĐT: <span id="tc-phone">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap content-pull" id="tc-content"></div>
+  <div class="bottom-nav">
+    <button class="nav-item" data-tab="home" onclick="tcSwitchTab('home')"><span class="ic">🏠</span>Trang chủ</button>
+    <button class="nav-item" data-tab="shop" onclick="tcSwitchTab('shop')"><span class="ic">🛍️</span>Mua hàng</button>
+    <button class="nav-item" data-tab="history" onclick="tcSwitchTab('history')"><span class="ic">🕓</span>Lịch sử</button>
+    <button class="nav-item" data-tab="respkg" onclick="tcSwitchTab('respkg')"><span class="ic">📦</span>Gói TN</button>
+  </div>
+</div>
+
+<!-- ================= ADMIN ================= -->
+<div id="screen-admin" class="hidden">
+  <div class="topbar" style="padding-bottom:20px;">
+    <div class="topbar-inner">
+      <button class="logout-btn" onclick="doLogout()">Đăng xuất</button>
+      <div class="brand">PortalNow</div>
+      <div class="brand-title">Bảng quản trị Admin</div>
+    </div>
+  </div>
+  <div class="wrap" style="margin-top:14px;">
+    <div class="admin-tabs" id="admin-tabs"></div>
+    <div id="admin-content"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   BACKEND THẬT — Firebase Realtime Database.
+   DB.get/DB.set giữ nguyên chữ ký hàm như bản mock cũ (đồng bộ), nhưng bên
+   dưới đọc/ghi Firebase thật: toàn bộ cây dữ liệu được lắng nghe real-time
+   qua onValue() và giữ trong bộ nhớ đệm (_cache) để DB.get() vẫn trả về
+   ngay lập tức (không cần sửa lại hàng trăm chỗ gọi DB.get trong file này).
+   DB.set() ghi thẳng lên Firebase; _cache sẽ tự cập nhật khi listener bắn.
+========================================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyDpdljrW7fY7PtmEb8hcfz97wO4sS3XMDU",
+  authDomain: "tiyithanhtoan.firebaseapp.com",
+  databaseURL: "https://tiyithanhtoan-default-rtdb.asia-southeast1.firebasedatabase.app", // ⚠️ kiểm tra lại URL này trong Firebase Console > Realtime Database, sửa nếu vùng (region) khác
+  projectId: "tiyithanhtoan",
+  storageBucket: "tiyithanhtoan.firebasestorage.app",
+  messagingSenderId: "582988007748",
+  appId: "1:582988007748:web:49cdd44961cfa0e708af11",
+  measurementId: "G-DVP7HYVCZJ"
+};
+firebase.initializeApp(firebaseConfig);
+try{ firebase.analytics(); }catch(e){}
+const fbAuth = firebase.auth();
+const fbDb = firebase.database();
+
+/* ⚠️ AN NINH: KHÔNG còn lắng nghe toàn bộ cây "/" khi vừa mở trang / vừa đăng
+   nhập nữa. Trước đây bất kỳ ai mở trang web (kể cả chưa đăng nhập) đều bị tải
+   TOÀN BỘ dữ liệu tài chính của mọi học viên/giáo viên về trình duyệt.
+   Bây giờ: sau khi biết vai trò (SESSION.role) của người đăng nhập, ta mới gọi
+   DB.loadPaths([...]) để chỉ đồng bộ đúng những nhánh dữ liệu người đó cần
+   (ví dụ học viên HV001 chỉ tải tuition/HV001, pnpoint/HV001... chứ không tải
+   dữ liệu của HV002, HV003...). Admin (đăng nhập thật bằng Email/Password) mới
+   được tải toàn bộ, vì công việc quản trị cần nhìn thấy hết. */
+const DB = {
+  _cache: {},
+  _listeners: [], // các listener realtime đang mở, để có thể gỡ khi đăng xuất
+  get(path){
+    const parts = path.split('/').filter(Boolean);
+    let cur = this._cache;
+    for(const p of parts){ if(cur==null) return null; cur = cur[p]; }
+    return cur === undefined ? null : cur;
+  },
+  set(path, val){
+    const parts = path.split('/').filter(Boolean);
+    // Ghi thẳng lên Firebase (bất đồng bộ). Với Rules mới, chỉ tài khoản Admin
+    // (Email/Password) mới có quyền ghi — nếu không phải Admin, lệnh này sẽ bị
+    // Firebase từ chối (permission_denied) và rơi vào catch bên dưới.
+    fbDb.ref(parts.join('/')).set(val===null?null:val).catch(err=>{
+      console.error('Lỗi ghi dữ liệu Firebase:', err);
+      toast('Không có quyền lưu dữ liệu này lên máy chủ', 'error');
+    });
+    // Cập nhật _cache lạc quan (optimistic) để UI phản hồi ngay, không cần chờ vòng round-trip
+    this._setCache(path, val);
+  },
+  _setCache(path, val){
+    const parts = path.split('/').filter(Boolean);
+    if(!parts.length){ this._cache = val || {}; return; }
+    let cur = this._cache;
+    for(let i=0;i<parts.length-1;i++){
+      if(cur[parts[i]]==null || typeof cur[parts[i]]!=='object') cur[parts[i]] = {};
+      cur = cur[parts[i]];
+    }
+    if(val===null || val===undefined) delete cur[parts[parts.length-1]];
+    else cur[parts[parts.length-1]] = val;
+  },
+  // Đăng ký lắng nghe realtime cho đúng danh sách nhánh cần thiết, trả về
+  // Promise hoàn tất khi mọi nhánh đã có dữ liệu lần đầu.
+  loadPaths(paths){
+    return Promise.all(paths.map(path=> new Promise(resolve=>{
+      const ref = fbDb.ref(path);
+      let first = true;
+      const cb = ref.on('value', snap=>{
+        this._setCache(path, snap.val());
+        if(first){ first = false; resolve(); }
+      }, err=>{
+        console.error('Lỗi đọc dữ liệu Firebase ('+path+'):', err);
+        if(first){ first = false; resolve(); } // không chặn UI nếu 1 nhánh lỗi quyền
+      });
+      this._listeners.push({ path, ref, cb });
+    })));
+  },
+  // Gỡ toàn bộ listener + xoá cache khi đăng xuất, tránh dữ liệu của phiên
+  // trước còn sót lại trong bộ nhớ trình duyệt.
+  unloadAll(){
+    this._listeners.forEach(({ref, cb})=> ref.off('value', cb));
+    this._listeners = [];
+    this._cache = {};
+  }
+};
+
+/* Các nhánh dữ liệu Admin cần (quản trị cần nhìn toàn bộ) */
+const ADMIN_PATHS = ['users','classes','tuition','tuitionHistoryLog','teacherSalaryLog','ads','products',
+  'vipConfig','vip','pnpoint','pnpointConfig','pnpointRedeem','purchases','vouchers','settings',
+  'resPackages','resRequests','resHistory','seeded'];
+
+// Xây danh sách nhánh cần tải cho Học viên / Giáo viên — CHỈ gồm dữ liệu của
+// chính người đó (uid) + các nhánh cấu hình/danh mục dùng chung, KHÔNG bao giờ
+// tải dữ liệu tài chính của người khác về máy.
+function buildRolePaths(role, uid, userRecord){
+  const common = ['products','ads','vouchers','settings/bankTuition','settings/bankShop','settings/bankResPkg','resPackages'];
+  if(role==='hv'){
+    return [
+      'users/'+uid, 'tuition/'+uid, 'pnpoint/'+uid, 'vip/'+uid,
+      'vipConfig','pnpointConfig','pnpointRedeem',
+      ...(userRecord && userRecord.classId ? ['classes/'+userRecord.classId] : []),
+      ...common
+    ];
+  }
+  if(role==='teacher'){
+    return ['users/'+uid, 'teacherSalaryLog/'+uid, ...common];
+  }
+  return [];
+}
+
+/* ---------------- Seed dữ liệu mẫu ----------------
+   Chỉ chạy khi Admin đã đăng nhập thật (Email/Password) và dữ liệu Admin đã
+   được tải — vì DB.set() giờ chỉ thành công với tài khoản Admin theo Rules
+   mới. Được gọi ở doAdminLogin() / khôi phục phiên Admin, KHÔNG tự chạy khi
+   người dùng ẩn danh vừa mở trang nữa. */
+function seed(){
+  if(DB.get('seeded')) return;
+  DB.set('settings/bankTuition', { bankName:'Ngân hàng ABC', accountNumber:'0123456789', accountHolder:'TRUNG TAM TIYI' });
+  DB.set('settings/bankShop', { bankName:'Ngân hàng ABC', accountNumber:'0123456789', accountHolder:'TRUNG TAM TIYI' });
+  DB.set('settings/bankResPkg', { bankName:'Ngân hàng ABC', accountNumber:'0123456789', accountHolder:'TRUNG TAM TIYI' });
+  DB.set('classes/L001', { name:'Lớp Toán 6A', code:'L001', students:['HV001'] });
+  DB.set('users/HV001', { role:'hv', name:'Nguyễn Văn A', classId:'L001' });
+  DB.set('users/GV001', { role:'teacher', name:'Trần Thị B', phone:'0909123456', bankName:'Ngân hàng ABC', accountNumber:'9998887776', qr:'' });
+  DB.set('tuition/HV001/TU'+Date.now(), { title:'Học phí tháng 7', amount:1500000, voucherCode:'', voucherAmount:0, discount:0, discountReason:'', status:'unpaid', uname:'Nguyễn Văn A', createdAt:Date.now() });
+  DB.set('teacherSalaryLog/GV001', [{ uid:'GV001', uname:'Trần Thị B', title:'Lương tháng 7', amount:6000000, status:'paid', at:Date.now() }]);
+  DB.set('ads/ad1', { color:'var(--ad-blue)', icon:'🎉', title:'Ưu đãi tháng 7', content:'Đóng học phí trước ngày 6 để cộng PN-Point!', endTime: Date.now()+1000*3600*24*30 });
+  DB.set('products/P001', { name:'Bộ dụng cụ học tập', price:120000, discount:0, content:'Bút, thước, tẩy chính hãng', images:[], forRole:'all' });
+  DB.set('resPackages/RP001', { name:'Gói tài liệu nâng cao', icon:'📚', desc:'Truy cập kho tài liệu học tập độc quyền', prices:{'1':50000,'3':135000,'6':240000} });
+  DB.set('vipConfig/tiers', [
+    {key:'dong', name:'Thành viên ĐỒNG', icon:'🥉', conditions:[500000]},
+    {key:'bac', name:'Thành viên BẠC', icon:'🥈', conditions:[2000000]},
+    {key:'vang2', name:'Thành viên VÀNG Cấp II', icon:'🥇', conditions:[5000000]},
+    {key:'vang1', name:'Thành viên VÀNG Cấp I', icon:'🏅', conditions:[10000000]},
+    {key:'kimcuong', name:'Thành viên KIM CƯƠNG', icon:'💎', conditions:[20000000]}
+  ]);
+  DB.set('vipConfig/explain', 'Hạng thành viên được tính dựa trên tổng số tiền bạn đã nạp/đóng học phí và mua sắm tại trung tâm. Hạng càng cao, ưu đãi càng nhiều.');
+  DB.set('pnpointConfig', {
+    shoppingBonus:10, tierBonus:{dong:5,bac:10,vang2:20,vang1:35,kimcuong:50},
+    onTimeBonus:20, lateRules:[{days:3,points:-10},{days:7,points:-20}]
+  });
+  DB.set('seeded', true);
+}
+// (Không auto-seed nữa — xem doAdminLogin() bên dưới)
+
+/* ---------------- Tiện ích ---------------- */
+function fmtVND(n){ n = Number(n)||0; return n.toLocaleString('vi-VN') + ' đ'; }
+function pad2(n){ return n<10 ? '0'+n : ''+n; }
+function currentMonthKey(){ const d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1); }
+function monthLabel(key){ const [y,m]=key.split('-'); return 'Tháng '+m+' năm '+y; }
+function toast(msg, type){
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type==='error'?' err':type==='ok'?' ok':'');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 2600);
+}
+function trimHistory(arr, threshold, keep){
+  if(arr.length >= threshold) arr.splice(0, arr.length-keep);
+  return arr;
+}
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = ()=>res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+function qrUrl(text){ return 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(text); }
+function genVoucherCode(prefix){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s='';
+  for(let i=0;i<10;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return prefix + s;
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------- Modal ---------------- */
+function openModal(html, opts){
+  closeModal();
+  const bd = document.createElement('div');
+  bd.className = 'modal-backdrop' + (opts&&opts.center ? ' center':'');
+  bd.id = 'active-modal';
+  bd.onclick = (e)=>{ if(e.target===bd) closeModal(); };
+  bd.innerHTML = `<div class="modal-sheet">${html}</div>`;
+  document.body.appendChild(bd);
+}
+function closeModal(){ const m = document.getElementById('active-modal'); if(m) m.remove(); }
+
+/* ---------------- Auth / Session ---------------- */
+let SESSION = { uid:null, role:null };
+let loginMode = 'uid'; // 'uid' | 'admin'
+
+function toggleLoginMode(){
+  loginMode = loginMode==='uid' ? 'admin' : 'uid';
+  document.getElementById('login-mode-uid').classList.toggle('hidden', loginMode!=='uid');
+  document.getElementById('login-mode-admin').classList.toggle('hidden', loginMode!=='admin');
+}
+
+// Bí mật: chạm nút "ĐĂNG NHẬP" 5 lần liên tiếp (trong vòng 2 giây) để mở form
+// đăng nhập Admin, thay vì hiện sẵn 1 nút "Đăng nhập với vai trò Admin" lộ liễu
+// như trước. 4 lần chạm đầu vẫn coi như học viên/giáo viên bấm nhầm nên vẫn
+// thử đăng nhập UID bình thường (không ảnh hưởng trải nghiệm học viên thật).
+let _loginTapCount = 0;
+let _loginTapTimer = null;
+function handleLoginTap(){
+  _loginTapCount++;
+  clearTimeout(_loginTapTimer);
+  _loginTapTimer = setTimeout(()=>{ _loginTapCount = 0; }, 2000);
+  if(_loginTapCount >= 5){
+    _loginTapCount = 0;
+    clearTimeout(_loginTapTimer);
+    if(loginMode!=='admin') toggleLoginMode();
+    return;
+  }
+  doLogin();
+}
+
+// Đăng nhập Học viên / Giáo viên: vẫn gõ UID như cũ, KHÔNG cần mật khẩu.
+// Khác biệt so với trước: không còn chuỗi "mật khẩu admin ẩn" nào trong JS,
+// và chỉ tải đúng dữ liệu của riêng UID này (xem buildRolePaths ở trên).
+async function doLogin(){
+  const uidInput = document.getElementById('login-uid').value.trim();
+  if(!uidInput){ toast('Vui lòng nhập tài khoản', 'error'); return; }
+  const btn = document.getElementById('login-uid-btn');
+  btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
+  try{
+    // Đọc đích danh 1 nhánh users/<uid> (không đọc cả cây) để kiểm tra tài khoản
+    const snap = await fbDb.ref('users/'+uidInput).once('value');
+    const u = snap.val();
+    if(!u){ toast('Tài khoản không tồn tại', 'error'); return; }
+    if(u.role!=='hv' && u.role!=='teacher'){ toast('Tài khoản không hợp lệ', 'error'); return; }
+    DB.unloadAll();
+    DB._setCache('users/'+uidInput, u);
+    SESSION = { uid:uidInput, role:u.role };
+    await DB.loadPaths(buildRolePaths(u.role, uidInput, u));
+    localStorage.setItem('pn_remember_uid', uidInput);
+    enterApp();
+  }catch(err){
+    console.error('Lỗi đăng nhập:', err);
+    toast('Không thể kết nối máy chủ, thử lại sau', 'error');
+  }finally{
+    btn.disabled = false; btn.textContent = 'ĐĂNG NHẬP';
+  }
+}
+
+// Đăng nhập Admin THẬT bằng Email/Password của Firebase Authentication.
+// Quyền ghi dữ liệu (DB.set) chỉ được Firebase Rules cấp cho đúng tài khoản
+// Admin này (theo UID Firebase, xem hướng dẫn Rules) — không còn kiểu
+// "gõ đúng chuỗi bí mật trong JS là thành admin" như trước.
+async function doAdminLogin(){
+  const email = document.getElementById('login-admin-email').value.trim();
+  const pass = document.getElementById('login-admin-pass').value;
+  if(!email || !pass){ toast('Vui lòng nhập email và mật khẩu', 'error'); return; }
+  const btn = document.getElementById('login-admin-btn');
+  btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
+  try{
+    await fbAuth.signInWithEmailAndPassword(email, pass);
+    // Việc tải dữ liệu + vào app được xử lý tập trung trong onAuthStateChanged
+    // (window.onload bên dưới) ngay khi Firebase xác nhận user không còn ẩn danh.
+  }catch(err){
+    console.error('Lỗi đăng nhập admin:', err);
+    toast('Sai email hoặc mật khẩu Admin', 'error');
+  }finally{
+    btn.disabled = false; btn.textContent = 'ĐĂNG NHẬP ADMIN';
+  }
+}
+
+function doLogout(){
+  const wasAdmin = SESSION.role==='admin';
+  DB.unloadAll();
+  SESSION = { uid:null, role:null };
+  localStorage.removeItem('pn_remember_uid');
+  ['screen-login','screen-hv','screen-teacher','screen-admin'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('screen-login').classList.remove('hidden');
+  document.getElementById('login-uid').value = '';
+  document.getElementById('login-admin-email').value = '';
+  document.getElementById('login-admin-pass').value = '';
+  if(loginMode==='admin') toggleLoginMode();
+  if(wasAdmin){
+    // Thoát khỏi phiên Firebase Auth thật của Admin, quay lại ẩn danh để màn
+    // hình đăng nhập UID có thể hoạt động lại bình thường.
+    fbAuth.signOut().then(()=> fbAuth.signInAnonymously()).catch(err=>console.error(err));
+  }
+}
+
+function enterApp(){
+  ['screen-login','screen-hv','screen-teacher','screen-admin'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  if(SESSION.role==='hv'){ document.getElementById('screen-hv').classList.remove('hidden'); hvInit(); }
+  else if(SESSION.role==='teacher'){ document.getElementById('screen-teacher').classList.remove('hidden'); tcInit(); }
+  else if(SESSION.role==='admin'){ document.getElementById('screen-admin').classList.remove('hidden'); adInit(); }
+}
+
+/* ---------------- Ads carousel (dùng chung) ---------------- */
+function renderAds(){
+  const now = Date.now();
+  const ads = DB.get('ads') || {};
+  const list = Object.entries(ads).filter(([,a])=> !a.endTime || a.endTime > now);
+  if(!list.length) return '';
+  const cards = list.map(([id,a])=>`
+    <div class="ad-card" style="background:${esc(a.color||'var(--ad-blue)')}">
+      <div class="ad-icon">${esc(a.icon||'📣')}</div>
+      <div class="ad-title">${esc(a.title)}</div>
+      <div class="ad-content">${esc(a.content||'')}</div>
+    </div>`).join('');
+  const dots = list.map((_,i)=>`<div class="dot ${i===0?'active':''}"></div>`).join('');
+  return `<div class="ads-scroll" id="ads-scroll" onscroll="_adsScrollSync(this)">${cards}</div><div class="dots" id="ads-dots">${dots}</div>`;
+}
+function _adsScrollSync(el){
+  const idx = Math.round(el.scrollLeft / (el.firstElementChild.offsetWidth+10));
+  document.querySelectorAll('#ads-dots .dot').forEach((d,i)=>d.classList.toggle('active', i===idx));
+}
+
+/* =========================================================================
+   HỌC VIÊN
+========================================================================= */
+let hvTab = 'home';
+function hvInit(){
+  const u = DB.get('users/'+SESSION.uid);
+  document.getElementById('hv-name').textContent = u.name || SESSION.uid;
+  const cls = DB.get('classes/'+u.classId);
+  document.getElementById('hv-class').textContent = cls ? cls.name : '—';
+  hvSwitchTab('home');
+}
+function hvSwitchTab(tab){
+  hvTab = tab;
+  document.querySelectorAll('#screen-hv .nav-item').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  const c = document.getElementById('hv-content');
+  if(tab==='home') c.innerHTML = hvRenderHome();
+  if(tab==='shop') c.innerHTML = renderShop(SESSION.uid, 'hv');
+  if(tab==='vip') c.innerHTML = hvRenderVip();
+  if(tab==='point') c.innerHTML = hvRenderPoint();
+  if(tab==='respkg') c.innerHTML = renderResPkgList(SESSION.uid, 'hv');
+}
+function hvRenderHome(){
+  const items = DB.get('tuition/'+SESSION.uid) || {};
+  const active = Object.entries(items).filter(([,t])=> t.status==='unpaid' || t.status==='pending');
+  active.sort((a,b)=> (a[1].createdAt||0)-(b[1].createdAt||0));
+  const cards = !active.length ? `<div class="card"><div class="empty-state">🎉 Bạn không có khoản học phí nào cần đóng</div></div>` :
+    active.map(([id,t])=>{
+      const total = Math.max(0, (t.amount||0) - (t.voucherAmount||0) - (t.discount||0));
+      // Khoản đã gửi biên lai và được trừ tự động (autoCredited) -> hiển thị là
+      // đã đóng/đã trừ tiền ngay trên ô này, không còn nút "ĐÓNG TIỀN" nữa,
+      // nhưng ô học phí vẫn hiện ở đây (chỉ chờ admin xác nhận biên lai phía sau).
+      const paidAuto = t.status==='pending' && t.autoCredited;
+      const statusChip = paidAuto ? '<span class="chip chip-ok">✅ Đã đóng - [tạm tính]</span>'
+        : t.status==='pending' ? '<span class="chip chip-warn">⏳ Đang xét duyệt</span>'
+        : '<span class="chip chip-danger">🔴 Chưa đóng</span>';
+      return `
+      <div class="tuition-hero" style="margin-top:6px;">
+        <div class="label">${esc(t.title||'Học phí')}</div>
+        <div class="tuition-line"><span>Học phí</span><span>${fmtVND(t.amount)}</span></div>
+        <div class="tuition-line"><span>Voucher</span><span>-${fmtVND(t.voucherAmount)}</span></div>
+        <div class="tuition-line"><span>Khấu trừ${t.discountReason? ' ('+esc(t.discountReason)+')':''}</span><span>-${fmtVND(t.discount)}</span></div>
+        ${paidAuto ? `<div class="tuition-line"><span>Đã thanh toán</span><span>-${fmtVND(total)}</span></div><div class="tuition-total">Còn lại: ${fmtVND(0)}</div>` : `<div class="tuition-total">Tạm tính: ${fmtVND(total)}</div>`}
+        <div style="margin-top:10px;">${statusChip}</div>
+        ${t.status==='unpaid' ? `<button class="btn btn-gold" style="width:100%; margin-top:12px;" onclick="hvOpenPayTuition('${id}')">ĐÓNG TIỀN</button>` : ''}
+      </div>
+      ${t.status==='unpaid' ? `
+      <div class="card">
+        <div class="row"><span class="muted">Nhập voucher cho "${esc(t.title||'Học phí')}"</span></div>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <input id="hv-voucher-input-${id}" placeholder="VD: XF1234567890">
+          <button class="btn btn-primary btn-sm" style="white-space:nowrap;" onclick="hvApplyVoucher('${id}')">Áp dụng</button>
+        </div>
+      </div>` : ''}`;
+    }).join('');
+  return `${renderAds()}${cards}`;
+}
+function hvApplyVoucher(itemId){
+  const code = (document.getElementById('hv-voucher-input-'+itemId).value||'').trim().toUpperCase();
+  if(!code){ toast('Nhập mã voucher', 'error'); return; }
+  const v = DB.get('vouchers/'+code);
+  if(!v){ toast('Voucher không tồn tại', 'error'); return; }
+  if(v.revoked){ toast('Voucher đã bị thu hồi', 'error'); return; }
+  if(v.used){ toast('Voucher đã được sử dụng', 'error'); return; }
+  if(v.expiry && v.expiry < Date.now()){ toast('Voucher đã hết hạn', 'error'); return; }
+  if(v.type!=='tuition' && v.type!=='both'){ toast('Voucher này không áp dụng cho học phí', 'error'); return; }
+  const t = DB.get('tuition/'+SESSION.uid+'/'+itemId) || { amount:0, discount:0 };
+  t.voucherCode = code; t.voucherAmount = v.amount;
+  DB.set('tuition/'+SESSION.uid+'/'+itemId, t);
+  v.used = true; v.usedBy = SESSION.uid;
+  DB.set('vouchers/'+code, v);
+  toast('Đã áp dụng voucher -' + fmtVND(v.amount), 'ok');
+  hvSwitchTab('home');
+}
+function hvOpenPayTuition(itemId){
+  const t = DB.get('tuition/'+SESSION.uid+'/'+itemId) || { amount:0, voucherAmount:0, discount:0 };
+  const total = Math.max(0, (t.amount||0) - (t.voucherAmount||0) - (t.discount||0));
+  const bank = DB.get('settings/bankTuition') || {};
+  const content = SESSION.uid + ' HP ' + itemId.slice(-6);
+  openModal(`
+    <div class="modal-head"><h3>Đóng: ${esc(t.title||'Học phí')}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="qr-box"><img src="${bank.qr || qrUrl(content+' '+total)}"></div>
+    <div class="tuition-line"><span>Tên ngân hàng</span><span>${esc(bank.bankName||'—')}</span></div>
+    <div class="tuition-line"><span>Số tài khoản</span><span>${esc(bank.accountNumber||'—')}</span></div>
+    <div class="tuition-line"><span>Chủ tài khoản</span><span>${esc(bank.accountHolder||'—')}</span></div>
+    <div class="tuition-line"><span>Số tiền</span><span><b>${fmtVND(total)}</b></span></div>
+    <div class="red-note">Nội dung chuyển khoản: ${esc(content)}</div>
+    <label class="f-label">Gửi biên lai (không bắt buộc)</label>
+    <input type="file" id="hv-receipt-file" accept="image/*">
+    <label class="f-label">Hình thức</label>
+    <select id="hv-pay-method"><option>Chuyển khoản ngân hàng</option><option>Ví điện tử</option><option>Tiền mặt tại quầy</option></select>
+    <button class="btn btn-ok" style="width:100%; margin-top:14px;" onclick="hvConfirmPaidTuition('${itemId}', ${total})">ĐÃ ĐÓNG TIỀN</button>
+  `);
+}
+async function hvConfirmPaidTuition(itemId, total){
+  const fileInput = document.getElementById('hv-receipt-file');
+  let receipt = '';
+  if(fileInput.files[0]) receipt = await fileToBase64(fileInput.files[0]);
+  const method = document.getElementById('hv-pay-method').value;
+  const t = DB.get('tuition/'+SESSION.uid+'/'+itemId) || {};
+  // AN NINH: KHÔNG còn tự cộng VIP/PN-Point ngay khi học viên gửi biên lai
+  // nữa. Biên lai chỉ là ảnh học viên tự tải lên, hệ thống không xác minh
+  // được nội dung ảnh -> nếu cộng ngay thì ai cũng "tự thưởng" VIP/điểm cho
+  // mình bằng cách tải lên ảnh bất kỳ, trước khi admin kịp xem qua, và có thể
+  // đổi quà thật trước khi admin từ chối kịp. VIP + PN-Point giờ CHỈ được
+  // cộng khi admin bấm "Duyệt" thật sự (xem adApproveTuitionItem).
+  t.status = 'pending'; t.receipt = receipt; t.method = method; t.paidAt = Date.now(); t.total = total;
+  t.autoCredited = false;
+  DB.set('tuition/'+SESSION.uid+'/'+itemId, t);
+  closeModal();
+  toast('Đã gửi yêu cầu, vui lòng đợi admin xác nhận biên lai', 'ok');
+  hvSwitchTab('home');
+}
+
+/* ---- VIP (học viên xem) ---- */
+function computeVipTier(uid){
+  const vip = DB.get('vip/'+uid) || { accumulated:0 };
+  const tiers = DB.get('vipConfig/tiers') || [];
+  let current = null;
+  tiers.forEach(t=>{
+    const need = Math.min(...(t.conditions||[Infinity]));
+    if(vip.accumulated >= need) current = t;
+  });
+  return { vip, tiers, current };
+}
+function hvRenderVip(){
+  const { vip, tiers, current } = computeVipTier(SESSION.uid);
+  const idx = current ? tiers.findIndex(t=>t.key===current.key) : -1;
+  const next = tiers[idx+1];
+  const base = idx>=0 ? Math.min(...(tiers[idx].conditions||[0])) : 0;
+  const nextNeed = next ? Math.min(...(next.conditions||[0])) : base;
+  const pct = next ? Math.min(100, Math.round(((vip.accumulated-base)/(nextNeed-base||1))*100)) : 100;
+  const explain = DB.get('vipConfig/explain') || '';
+  return `
+  <div class="card" style="text-align:center;">
+    <div class="tier-badge">${current? current.icon : '⚪'}</div>
+    <div style="font-weight:800; font-size:16px; margin-top:6px;">${current? 'Bạn đang là ' + current.name : 'Chưa có hạng thành viên'}</div>
+    <div class="muted" style="margin:8px 0 4px;">Tổng tích lũy: ${fmtVND(vip.accumulated||0)}</div>
+    <div class="vip-progress-track"><div class="vip-progress-fill" style="width:${pct}%"></div></div>
+    <div class="muted" style="margin-top:6px;">${next ? pct+'% đến ' + next.name : 'Đã đạt hạng cao nhất'}</div>
+  </div>
+  <div class="card">
+    <div class="section-title">Tìm hiểu VIP</div>
+    ${tiers.map(t=>`
+      <div class="accordion" id="vip-acc-${t.key}">
+        <div class="accordion-head" onclick="toggleAcc('vip-acc-${t.key}')">
+          <span>${t.icon} ${esc(t.name)}</span><span class="accordion-arrow">⌄</span>
+        </div>
+        <div class="accordion-body">Điều kiện: nạp tối thiểu ${fmtVND(Math.min(...(t.conditions||[0])))}</div>
+      </div>`).join('')}
+    <div class="accordion" id="vip-acc-explain">
+      <div class="accordion-head" onclick="toggleAcc('vip-acc-explain')"><span>🔽 Giải thích nghĩa</span><span class="accordion-arrow">⌄</span></div>
+      <div class="accordion-body">${esc(explain)}</div>
+    </div>
+  </div>`;
+}
+function toggleAcc(id){ document.getElementById(id).classList.toggle('open'); }
+
+/* ---- PN-Point (học viên) ---- */
+function hvRenderPoint(){
+  const u = DB.get('users/'+SESSION.uid);
+  const pp = DB.get('pnpoint/'+SESSION.uid) || { points:1000, history:[] };
+  const products = DB.get('pnpointRedeem') || {};
+  const items = Object.entries(products);
+  // Lịch sử đổi quà: CHỈ hiển thị các lần thực sự đổi quà (type:'redeem'),
+  // không lẫn các lần cộng điểm do đóng học phí / VIP / mua sắm.
+  const history = (pp.history||[]).filter(h=>h.type==='redeem').slice().reverse().slice(0,15);
+  return `
+  <div class="card">
+    <div class="row"><span class="muted">Họ và tên</span><b>${esc(u.name)}</b></div>
+    <div class="divider"></div>
+    <div class="row"><span class="muted">Số point của bạn</span><span style="font-size:20px; font-weight:800; color:var(--gold);">🪙 ${pp.points||0}</span></div>
+  </div>
+  <div class="card">
+    <div class="section-title">Đổi quà</div>
+    ${!items.length ? '<div class="empty-state">Chưa có quà để đổi</div>' : `
+    <div class="prod-grid">
+      ${items.map(([id,p])=>`
+        <div class="prod-card">
+          <img class="prod-img" src="${p.image || 'https://placehold.co/200x140/EEF0FA/6B7086?text=Quà'}">
+          <div class="prod-body">
+            <div class="prod-name">${esc(p.name)}</div>
+            <div class="prod-price">🪙 ${p.points}</div>
+            <button class="btn btn-primary btn-sm" style="width:100%; margin-top:8px;" onclick="hvRedeemConfirm('${id}')">Đổi</button>
+          </div>
+        </div>`).join('')}
+    </div>`}
+  </div>
+  <div class="card">
+    <div class="section-title">Lịch sử đã đổi quà</div>
+    ${!history.length ? '<div class="empty-state">Chưa có lịch sử</div>' : history.map(h=>`
+      <div class="list-row"><span>${esc(h.name)}</span><span class="meta">-${h.points} 🪙</span></div>`).join('')}
+  </div>`;
+}
+function hvRedeemConfirm(id){
+  const p = DB.get('pnpointRedeem/'+id);
+  openModal(`
+    <div class="modal-head"><h3>Xác nhận đổi quà</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <p>Bạn có xác nhận đổi <b>${esc(p.name)}</b> với <b>${p.points} 🪙</b> PN-Point?</p>
+    <div class="row" style="gap:10px; margin-top:14px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal()">Quay về</button>
+      <button class="btn btn-ok" style="flex:1;" onclick="hvRedeemDo('${id}')">Đồng ý</button>
+    </div>`, {center:true});
+}
+function hvRedeemDo(id){
+  const p = DB.get('pnpointRedeem/'+id);
+  const pp = DB.get('pnpoint/'+SESSION.uid) || { points:1000, history:[] };
+  if((pp.points||0) < p.points){ toast('Không đủ PN-Point', 'error'); closeModal(); return; }
+  pp.points -= p.points;
+  pp.history = pp.history || [];
+  pp.history.push({ name:p.name, points:p.points, at:Date.now(), type:'redeem' });
+  trimHistory(pp.history, 50, 25);
+  DB.set('pnpoint/'+SESSION.uid, pp);
+  closeModal();
+  toast('Đổi quà thành công!', 'ok');
+  hvSwitchTab('point');
+}
+
+/* =========================================================================
+   MUA HÀNG (dùng chung Học viên / Giáo viên)
+========================================================================= */
+function renderShop(uid, role){
+  const products = DB.get('products') || {};
+  const items = Object.entries(products).filter(([,p])=> !p.forRole || p.forRole==='all' || p.forRole===role);
+  return `
+  <div class="section-title" style="margin-top:6px;">Cửa hàng</div>
+  <div class="muted" style="margin:-4px 0 10px;">🎟️ Khi có voucher mua sắm, nhớ dùng nhé!</div>
+  ${!items.length ? '<div class="empty-state">Chưa có sản phẩm nào</div>' : `
+  <div class="prod-grid">
+    ${items.map(([id,p])=>{
+      const img = (p.images&&p.images[0]) || 'https://placehold.co/200x140/EEF0FA/6B7086?text=San+pham';
+      const price = p.discount ? p.price-p.discount : p.price;
+      return `
+      <div class="prod-card">
+        <img class="prod-img" src="${img}">
+        <div class="prod-body">
+          <div class="prod-name">${esc(p.name)}</div>
+          <div class="prod-price">${p.discount?`<s>${fmtVND(p.price)}</s>`:''}${fmtVND(price)}</div>
+          <button class="btn btn-gold btn-sm" style="width:100%; margin-top:8px;" onclick="openBuyProduct('${id}')">MUA</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`}`;
+}
+let shopBuyState = { productId:null, basePrice:0, voucherCode:'', voucherAmount:0 };
+function openBuyProduct(id){
+  const p = DB.get('products/'+id);
+  const basePrice = p.discount ? p.price-p.discount : p.price;
+  shopBuyState = { productId:id, basePrice, voucherCode:'', voucherAmount:0 };
+  renderBuyProductModal();
+}
+function renderBuyProductModal(){
+  const p = DB.get('products/'+shopBuyState.productId);
+  const total = Math.max(0, shopBuyState.basePrice - shopBuyState.voucherAmount);
+  const bank = DB.get('settings/bankShop') || {};
+  const content = SESSION.uid + ' MH ' + total + ' ' + shopBuyState.productId;
+  openModal(`
+    <div class="modal-head"><h3>Mua: ${esc(p.name)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="tuition-line plain"><span>Giá sản phẩm</span><span>${fmtVND(shopBuyState.basePrice)}</span></div>
+    <div class="tuition-line plain"><span>Voucher</span><span>-${fmtVND(shopBuyState.voucherAmount)}</span></div>
+    <div class="tuition-line plain"><span>Thành tiền</span><span><b>${fmtVND(total)}</b></span></div>
+    ${!shopBuyState.voucherCode ? `
+    <div class="row" style="gap:8px; margin-top:8px;">
+      <input id="buy-voucher-input" placeholder="Mã voucher mua sắm (nếu có)">
+      <button class="btn btn-primary btn-sm" style="white-space:nowrap;" onclick="applyShopVoucher()">Áp dụng</button>
+    </div>` : `<div class="muted" style="margin-top:6px;">Đã áp dụng voucher ${esc(shopBuyState.voucherCode)}</div>`}
+    <div class="qr-box"><img src="${bank.qr || qrUrl(content)}"></div>
+    <div class="tuition-line plain"><span>Tên ngân hàng</span><span>${esc(bank.bankName||'—')}</span></div>
+    <div class="tuition-line plain"><span>Số tài khoản</span><span>${esc(bank.accountNumber||'—')}</span></div>
+    <div class="red-note">Nội dung: ${esc(content)}</div>
+    <label class="f-label">Gửi biên lai (không bắt buộc)</label>
+    <input type="file" id="buy-receipt-file" accept="image/*">
+    <label class="f-label">Hình thức</label>
+    <select id="buy-pay-method"><option>Chuyển khoản ngân hàng</option><option>Ví điện tử</option><option>Tiền mặt tại quầy</option></select>
+    <button class="btn btn-ok" style="width:100%; margin-top:14px;" onclick="confirmBuyProduct(${total})">ĐÃ ĐÓNG TIỀN</button>
+  `);
+}
+function applyShopVoucher(){
+  const code = (document.getElementById('buy-voucher-input').value||'').trim().toUpperCase();
+  if(!code){ toast('Nhập mã voucher', 'error'); return; }
+  const v = DB.get('vouchers/'+code);
+  if(!v){ toast('Voucher không tồn tại', 'error'); return; }
+  if(v.revoked){ toast('Voucher đã bị thu hồi', 'error'); return; }
+  if(v.used){ toast('Voucher đã được sử dụng', 'error'); return; }
+  if(v.expiry && v.expiry < Date.now()){ toast('Voucher đã hết hạn', 'error'); return; }
+  if(v.type!=='shop' && v.type!=='both'){ toast('Voucher này chỉ dùng cho học phí, không áp dụng cho mua sắm', 'error'); return; }
+  shopBuyState.voucherCode = code;
+  shopBuyState.voucherAmount = v.amount;
+  v.used = true; v.usedBy = SESSION.uid;
+  DB.set('vouchers/'+code, v);
+  toast('Đã áp dụng voucher -' + fmtVND(v.amount), 'ok');
+  renderBuyProductModal();
+}
+async function confirmBuyProduct(total){
+  const p = DB.get('products/'+shopBuyState.productId);
+  const fileInput = document.getElementById('buy-receipt-file');
+  let receipt = '';
+  if(fileInput.files[0]) receipt = await fileToBase64(fileInput.files[0]);
+  const method = document.getElementById('buy-pay-method').value;
+  const purchaseId = 'PU'+Date.now();
+  DB.set('purchases/'+purchaseId, {
+    buyerUid: SESSION.uid, productId:shopBuyState.productId, productName:p.name, amount:total,
+    voucherCode: shopBuyState.voucherCode||'', voucherAmount: shopBuyState.voucherAmount||0,
+    status:'pending', receipt, method, createdAt:Date.now()
+  });
+  closeModal();
+  toast('Đã gửi yêu cầu mua hàng, vui lòng đợi xét duyệt', 'ok');
+  if(SESSION.role==='hv') hvSwitchTab('shop'); else tcSwitchTab('shop');
+}
+
+/* =========================================================================
+   GÓI TÀI NGUYÊN BÊN NGOÀI (dùng chung Học viên / Giáo viên)
+========================================================================= */
+const RESPKG_MONTHS = [
+  {key:'1', label:'1 tháng'}, {key:'3', label:'3 tháng'}, {key:'6', label:'6 tháng'},
+  {key:'12', label:'12 tháng'}, {key:'24', label:'24 tháng'}
+];
+function renderResPkgList(uid, role){
+  const packages = DB.get('resPackages') || {};
+  const items = Object.entries(packages);
+  return `
+  <div class="section-title" style="margin-top:6px;">📦 Gói tài nguyên bên ngoài</div>
+  ${!items.length ? '<div class="card"><div class="empty-state">Chưa có gói tài nguyên nào</div></div>' : items.map(([id,p])=>`
+    <div class="card">
+      <div class="row"><span style="font-weight:800; font-size:15px;">${esc(p.icon||'📦')} ${esc(p.name)}</span></div>
+      ${p.desc ? `<div class="muted" style="margin-top:4px;">${esc(p.desc)}</div>` : ''}
+      <div class="pkg-month-grid">
+        ${RESPKG_MONTHS.filter(m=> (p.prices||{})[m.key]).map(m=>`
+          <button class="pkg-month-btn" onclick="resOpenConfirm('${id}','${m.key}')">${m.label}<br>${fmtVND((p.prices||{})[m.key])}</button>`).join('')}
+      </div>
+    </div>`).join('')}`;
+}
+function resOpenConfirm(pkgId, monthKey){
+  const p = DB.get('resPackages/'+pkgId);
+  const monthLabel2 = (RESPKG_MONTHS.find(m=>m.key===monthKey)||{}).label || monthKey+' tháng';
+  openModal(`
+    <div class="modal-head"><h3>Xác nhận</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <p>Bạn chắc chắn chọn gói <b>${esc(p.name)} — ${monthLabel2}</b> với giá <b>${fmtVND((p.prices||{})[monthKey])}</b>?</p>
+    <div class="row" style="gap:10px; margin-top:14px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal()">Thoát</button>
+      <button class="btn btn-ok" style="flex:1;" onclick="resOpenPayModal('${pkgId}','${monthKey}')">OK</button>
+    </div>`, {center:true});
+}
+function resOpenPayModal(pkgId, monthKey){
+  const p = DB.get('resPackages/'+pkgId);
+  const amount = (p.prices||{})[monthKey] || 0;
+  const monthLabel2 = (RESPKG_MONTHS.find(m=>m.key===monthKey)||{}).label || monthKey+' tháng';
+  const bank = DB.get('settings/bankResPkg') || {};
+  const content = SESSION.uid + ' GTN ' + pkgId + ' ' + monthKey + 'T';
+  openModal(`
+    <div class="modal-head"><h3>Mua: ${esc(p.name)} — ${monthLabel2}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="qr-box"><img src="${bank.qr || qrUrl(content+' '+amount)}"></div>
+    <div class="tuition-line plain"><span>Tên ngân hàng</span><span>${esc(bank.bankName||'—')}</span></div>
+    <div class="tuition-line plain"><span>Số tài khoản</span><span>${esc(bank.accountNumber||'—')}</span></div>
+    <div class="tuition-line plain"><span>Chủ tài khoản</span><span>${esc(bank.accountHolder||'—')}</span></div>
+    <div class="tuition-line plain"><span>Số tiền</span><span><b>${fmtVND(amount)}</b></span></div>
+    <div class="red-note">Nội dung chuyển khoản: ${esc(content)}</div>
+    <label class="f-label">Gửi biên lai (không bắt buộc)</label>
+    <input type="file" id="res-receipt-file" accept="image/*">
+    <label class="f-label">Hình thức</label>
+    <select id="res-pay-method"><option>Chuyển khoản ngân hàng</option><option>Ví điện tử</option><option>Tiền mặt tại quầy</option></select>
+    <button class="btn btn-ok" style="width:100%; margin-top:14px;" onclick="resConfirmPaid('${pkgId}','${monthKey}',${amount})">ĐÃ ĐÓNG TIỀN</button>
+  `, {center:true});
+}
+async function resConfirmPaid(pkgId, monthKey, amount){
+  const p = DB.get('resPackages/'+pkgId);
+  const u = DB.get('users/'+SESSION.uid);
+  const fileInput = document.getElementById('res-receipt-file');
+  let receipt = '';
+  if(fileInput.files[0]) receipt = await fileToBase64(fileInput.files[0]);
+  const method = document.getElementById('res-pay-method').value;
+  const reqId = 'RR'+Date.now();
+  DB.set('resRequests/'+reqId, {
+    uid: SESSION.uid, uname: u.name || SESSION.uid, pkgId, pkgName: p.name, months: Number(monthKey),
+    amount, receipt, method, status:'pending', createdAt: Date.now()
+  });
+  closeModal();
+  toast('Đã gửi yêu cầu, vui lòng đợi hệ thống xét duyệt', 'ok');
+  if(SESSION.role==='hv') hvSwitchTab('respkg'); else tcSwitchTab('respkg');
+}
+
+/* =========================================================================
+   GIÁO VIÊN
+========================================================================= */
+let tcTab = 'home';
+function tcInit(){
+  const u = DB.get('users/'+SESSION.uid);
+  document.getElementById('tc-name').textContent = u.name || SESSION.uid;
+  document.getElementById('tc-phone').textContent = u.phone || '—';
+  tcSwitchTab('home');
+}
+function tcSwitchTab(tab){
+  tcTab = tab;
+  document.querySelectorAll('#screen-teacher .nav-item').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  const c = document.getElementById('tc-content');
+  if(tab==='home') c.innerHTML = tcRenderHome();
+  if(tab==='shop') c.innerHTML = renderShop(SESSION.uid, 'teacher');
+  if(tab==='history') c.innerHTML = tcRenderHistory();
+  if(tab==='respkg') c.innerHTML = renderResPkgList(SESSION.uid, 'teacher');
+}
+function tcRenderHome(){
+  const log = DB.get('teacherSalaryLog/'+SESSION.uid) || [];
+  const latest = log.length ? log[log.length-1] : null;
+  return `
+  ${renderAds()}
+  <div class="tuition-hero" style="margin-top:6px;">
+    <div class="label">${latest ? esc(latest.title) : 'Lương'}</div>
+    <div class="tuition-total">${fmtVND(latest ? latest.amount : 0)}</div>
+    ${latest ? `<button class="btn btn-ghost" style="width:100%; margin-top:12px;" onclick="tcViewPayslip(${log.length-1})">Xem phiếu lương tại đây</button>` : ''}
+    <div style="margin-top:12px;">
+      ${latest ? '<span class="chip chip-ok">🟢 Đã trả lương</span>' : '<span class="chip chip-danger">🔴 Chưa có khoản lương nào</span>'}
+    </div>
+  </div>`;
+}
+function tcViewPayslip(idx){
+  const log = DB.get('teacherSalaryLog/'+SESSION.uid) || [];
+  const s = log[idx];
+  if(!s) return;
+  const u = DB.get('users/'+SESSION.uid);
+  const imgData = renderPayslipImage(SESSION.uid, u, s);
+  openModal(`
+    <div class="modal-head"><h3>Phiếu lương: ${esc(s.title)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div style="border-radius:12px; overflow:hidden; border:1px solid var(--line);"><img src="${imgData}" style="width:100%; display:block;"></div>
+    <a href="${imgData}" download="phieu-luong-${SESSION.uid}-${idx}.png" class="btn btn-gold" style="width:100%; margin-top:12px; display:block; text-align:center; text-decoration:none;">⬇ TẢI ẢNH PHIẾU LƯƠNG</a>
+  `, {center:true});
+}
+function renderPayslipImage(uid, u, s){
+  const cv = document.createElement('canvas');
+  cv.width = 640; cv.height = 420;
+  const ctx = cv.getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,640,420);
+  grad.addColorStop(0,'#20286B'); grad.addColorStop(1,'#3947B5');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,640,420);
+  ctx.fillStyle = 'rgba(255,255,255,.08)';
+  ctx.beginPath(); ctx.arc(600,20,140,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#D6A429';
+  ctx.font = '700 13px Arial'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Thuộc quản lý của Tiyi - PortalNow', 32, 44);
+  ctx.fillStyle = '#fff';
+  ctx.font = '800 24px Arial';
+  ctx.fillText('PHIẾU LƯƠNG GIÁO VIÊN', 32, 78);
+  ctx.font = '600 14px Arial'; ctx.fillStyle = 'rgba(255,255,255,.75)';
+  ctx.fillText(s.title || '—', 32, 100);
+  ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.moveTo(32,120); ctx.lineTo(608,120); ctx.stroke();
+  const rows = [
+    ['Giáo viên', u.name || uid],
+    ['Mã tài khoản', uid],
+    ['SĐT', u.phone || '—'],
+    ['Tên lương', s.title || '—'],
+    ['Số tiền', fmtVND(s.amount)],
+    ['Trạng thái', 'Đã chi trả']
+  ];
+  let y = 150;
+  rows.forEach(([label,val])=>{
+    ctx.font = '600 14px Arial'; ctx.fillStyle = 'rgba(255,255,255,.7)';
+    ctx.fillText(label, 32, y);
+    ctx.font = '700 16px Arial'; ctx.fillStyle = '#fff';
+    ctx.textAlign = 'right'; ctx.fillText(val, 608, y); ctx.textAlign = 'left';
+    y += 38;
+  });
+  ctx.font = '500 11px Arial'; ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.fillText('Xuất lúc: ' + new Date().toLocaleString('vi-VN'), 32, 396);
+  return cv.toDataURL('image/png');
+}
+function tcRenderHistory(){
+  const log = DB.get('teacherSalaryLog/'+SESSION.uid) || [];
+  const rows = log.map((s,i)=>[i,s]).slice().reverse();
+  return `
+  <div class="card">
+    <div class="section-title">Lịch sử lương</div>
+    ${!rows.length ? '<div class="empty-state">Chưa có lịch sử</div>' : rows.map(([i,s])=>`
+      <div class="list-row"><span>${esc(s.title)}</span><span class="meta">${fmtVND(s.amount)} · Đã chi trả</span></div>`).join('')}
+  </div>`;
+}
+
+/* =========================================================================
+   ADMIN
+========================================================================= */
+const AD_MODULES = [
+  {key:'class', label:'🏫 Lớp học'},
+  {key:'student', label:'🎓 Học viên'},
+  {key:'teacher', label:'🧑‍🏫 Giáo viên'},
+  {key:'tuition', label:'💳 Học phí'},
+  {key:'ads', label:'📣 Quảng cáo'},
+  {key:'shop', label:'🛍️ Mua hàng'},
+  {key:'respkg', label:'📦 Gói TN bên ngoài'},
+  {key:'voucher', label:'🎟️ Voucher'},
+  {key:'vip', label:'👑 VIP'},
+  {key:'point', label:'🪙 PN-Point'},
+  {key:'salary', label:'💰 Lương GV'},
+  {key:'settings', label:'⚙️ Ngân hàng'}
+];
+// Đếm số mục đang chờ xử lý (có biên lai mới gửi tới) cho từng module, dùng để
+// hiển thị chấm đỏ + số đếm trên tab tương ứng.
+function adCountPending(key){
+  if(key==='tuition'){
+    const t = DB.get('tuition') || {};
+    let n = 0;
+    Object.values(t).forEach(items=> Object.values(items||{}).forEach(it=>{ if(it.status==='pending') n++; }));
+    return n;
+  }
+  if(key==='shop'){
+    const p = DB.get('purchases') || {};
+    return Object.values(p).filter(x=>x.status==='pending').length;
+  }
+  if(key==='respkg'){
+    const r = DB.get('resRequests') || {};
+    return Object.values(r).filter(x=>x.status==='pending').length;
+  }
+  return 0;
+}
+let adTab = 'class';
+function adInit(){
+  adRenderTabs();
+  adRenderContent();
+}
+function adRenderTabs(){
+  document.getElementById('admin-tabs').innerHTML = AD_MODULES.map(m=>{
+    const n = adCountPending(m.key);
+    return `<button class="admin-tab ${m.key===adTab?'active':''}" onclick="adSwitchTab('${m.key}')">${m.label}${n>0?`<span class="tab-badge">${n>99?'99+':n}</span>`:''}</button>`;
+  }).join('');
+}
+function adSwitchTab(key){
+  adTab = key;
+  adRenderTabs();
+  adRenderContent();
+}
+function adRenderContent(){
+  const c = document.getElementById('admin-content');
+  const fns = { class:adModClass, student:adModStudent, teacher:adModTeacher, tuition:adModTuition,
+    ads:adModAds, shop:adModShop, respkg:adModResPkg, voucher:adModVoucher, vip:adModVip, point:adModPoint, salary:adModSalary, settings:adModSettings };
+  c.innerHTML = fns[adTab] ? fns[adTab]() : '';
+}
+function adRefresh(){ adRenderTabs(); adRenderContent(); }
+
+/* ---- Module: Lớp học ---- */
+function adModClass(){
+  const classes = DB.get('classes') || {};
+  return `
+  <div class="card">
+    <div class="section-title">Thêm lớp học</div>
+    <label class="f-label">Mã lớp</label><input id="cl-code" placeholder="VD: L002">
+    <label class="f-label">Tên lớp</label><input id="cl-name" placeholder="VD: Lớp Anh Văn 7B">
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adAddClass()">TẠO</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Danh sách lớp học</div>
+    ${!Object.keys(classes).length ? '<div class="empty-state">Chưa có lớp học</div>' : Object.entries(classes).map(([id,cl])=>`
+      <div class="list-row">
+        <span>${esc(cl.name)} <span class="meta">(${id}) · ${(cl.students||[]).length} học viên</span></span>
+        <button class="btn btn-danger btn-sm" onclick="adDeleteClass('${id}')">Xoá</button>
+      </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="section-title">Xem lớp</div>
+    <select id="cl-view-select" onchange="adRenderClassStudents()">
+      <option value="">-- Chọn lớp để xem --</option>
+      ${Object.entries(classes).map(([id,cl])=>`<option value="${id}">${esc(cl.name)} (${id})</option>`).join('')}
+    </select>
+    <div id="cl-students-list" style="margin-top:8px;"></div>
+  </div>`;
+}
+function adDeleteClass(id){
+  const cl = DB.get('classes/'+id);
+  if(!cl) return;
+  if((cl.students||[]).length){
+    if(!confirm('Lớp "'+cl.name+'" vẫn còn '+cl.students.length+' học viên. Xoá lớp sẽ gỡ các học viên khỏi lớp này. Tiếp tục?')) return;
+    const users = DB.get('users') || {};
+    cl.students.forEach(uid=>{ if(users[uid]){ users[uid].classId = ''; DB.set('users/'+uid, users[uid]); } });
+  } else if(!confirm('Xoá lớp "'+cl.name+'"?')) return;
+  DB.set('classes/'+id, null);
+  toast('Đã xoá lớp học', 'ok'); adRefresh();
+}
+function adAddClass(){
+  const code = document.getElementById('cl-code').value.trim();
+  const name = document.getElementById('cl-name').value.trim();
+  if(!code || !name){ toast('Nhập đủ mã lớp và tên lớp', 'error'); return; }
+  if(DB.get('classes/'+code)){ toast('Mã lớp đã tồn tại', 'error'); return; }
+  DB.set('classes/'+code, { name, code, students:[] });
+  toast('Đã tạo lớp học', 'ok');
+  adRefresh();
+}
+function adRenderClassStudents(){
+  const id = document.getElementById('cl-view-select').value;
+  const box = document.getElementById('cl-students-list');
+  if(!id){ box.innerHTML=''; return; }
+  const cl = DB.get('classes/'+id);
+  const users = DB.get('users') || {};
+  const students = (cl.students||[]).map(uid=>users[uid]).filter(Boolean);
+  box.innerHTML = !students.length ? '<div class="empty-state">Lớp chưa có học viên</div>' :
+    students.map(s=>`<div class="list-row"><span>${esc(s.name)}</span><span class="meta">${esc(s.classId)}</span></div>`).join('');
+}
+
+/* ---- Module: Học viên ---- */
+function adModStudent(){
+  const classes = DB.get('classes') || {};
+  const users = DB.get('users') || {};
+  const students = Object.entries(users).filter(([,u])=>u.role==='hv');
+  return `
+  <div class="card">
+    <div class="section-title">Thêm học viên</div>
+    <label class="f-label">UID</label><input id="st-uid" placeholder="VD: HV002">
+    <label class="f-label">Họ và tên</label><input id="st-name">
+    <label class="f-label">Lớp</label>
+    <select id="st-class"><option value="">-- Chọn lớp --</option>${Object.entries(classes).map(([id,cl])=>`<option value="${id}">${esc(cl.name)}</option>`).join('')}</select>
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adAddStudent()">THÊM</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Danh sách học viên</div>
+    <input id="st-search" placeholder="Tìm theo UID hoặc lớp" oninput="adFilterStudents()" style="margin-bottom:10px;">
+    <div id="st-list">${adStudentRows(students)}</div>
+  </div>`;
+}
+function adStudentRows(list){
+  if(!list.length) return '<div class="empty-state">Chưa có học viên</div>';
+  return list.map(([uid,u])=>`
+    <div class="list-row">
+      <span>${esc(u.name)} <span class="meta">(${uid})</span></span>
+      <span style="display:flex; gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="adEditStudent('${uid}')">Sửa</button>
+        <button class="btn btn-danger btn-sm" onclick="adDeleteStudent('${uid}')">Xoá</button>
+      </span>
+    </div>`).join('');
+}
+function adFilterStudents(){
+  const q = document.getElementById('st-search').value.trim().toLowerCase();
+  const users = DB.get('users') || {};
+  const students = Object.entries(users).filter(([uid,u])=>u.role==='hv' && (uid.toLowerCase().includes(q) || (u.classId||'').toLowerCase().includes(q)));
+  document.getElementById('st-list').innerHTML = adStudentRows(students);
+}
+function adAddStudent(){
+  const uid = document.getElementById('st-uid').value.trim();
+  const name = document.getElementById('st-name').value.trim();
+  const classId = document.getElementById('st-class').value;
+  if(!uid || !name || !classId){ toast('Nhập đủ thông tin', 'error'); return; }
+  if(DB.get('users/'+uid)){ toast('UID đã tồn tại', 'error'); return; }
+  DB.set('users/'+uid, { role:'hv', name, classId });
+  const cl = DB.get('classes/'+classId);
+  cl.students = cl.students || []; cl.students.push(uid);
+  DB.set('classes/'+classId, cl);
+  DB.set('pnpoint/'+uid, { points:1000, history:[] });
+  toast('Đã thêm học viên', 'ok');
+  adRefresh();
+}
+function adEditStudent(uid){
+  const u = DB.get('users/'+uid);
+  const classes = DB.get('classes') || {};
+  openModal(`
+    <div class="modal-head"><h3>Sửa học viên</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <label class="f-label">Họ và tên</label><input id="ed-name" value="${esc(u.name)}">
+    <label class="f-label">Lớp</label>
+    <select id="ed-class">${Object.entries(classes).map(([id,cl])=>`<option value="${id}" ${id===u.classId?'selected':''}>${esc(cl.name)}</option>`).join('')}</select>
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adSaveStudent('${uid}')">Lưu</button>
+  `);
+}
+function adSaveStudent(uid){
+  const u = DB.get('users/'+uid);
+  const oldClass = u.classId;
+  u.name = document.getElementById('ed-name').value.trim();
+  u.classId = document.getElementById('ed-class').value;
+  DB.set('users/'+uid, u);
+  if(oldClass !== u.classId){
+    const oc = DB.get('classes/'+oldClass); if(oc){ oc.students=(oc.students||[]).filter(x=>x!==uid); DB.set('classes/'+oldClass, oc); }
+    const nc = DB.get('classes/'+u.classId); if(nc){ nc.students=nc.students||[]; nc.students.push(uid); DB.set('classes/'+u.classId, nc); }
+  }
+  closeModal(); toast('Đã lưu', 'ok'); adRefresh();
+}
+function adDeleteStudent(uid){
+  if(!confirm('Xoá học viên '+uid+'?')) return;
+  const u = DB.get('users/'+uid);
+  const cl = DB.get('classes/'+u.classId);
+  if(cl){ cl.students=(cl.students||[]).filter(x=>x!==uid); DB.set('classes/'+u.classId, cl); }
+  DB.set('users/'+uid, null);
+  toast('Đã xoá', 'ok'); adRefresh();
+}
+
+/* ---- Module: Giáo viên ---- */
+function adModTeacher(){
+  const users = DB.get('users') || {};
+  const teachers = Object.entries(users).filter(([,u])=>u.role==='teacher');
+  return `
+  <div class="card">
+    <div class="section-title">Thêm giáo viên</div>
+    <label class="f-label">UID</label><input id="tc-uid">
+    <label class="f-label">Họ và tên</label><input id="tc-add-name">
+    <label class="f-label">SĐT</label><input id="tc-add-phone">
+    <label class="f-label">Tên ngân hàng</label><input id="tc-add-bank">
+    <label class="f-label">Số tài khoản</label><input id="tc-add-acc">
+    <label class="f-label">Thêm mã QR (ảnh)</label><input type="file" id="tc-add-qr" accept="image/*">
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adAddTeacher()">THÊM</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Danh sách giáo viên</div>
+    <input id="tcx-search" placeholder="Tìm theo UID" oninput="adFilterTeachers()" style="margin-bottom:10px;">
+    <div id="tcx-list">${adTeacherRows(teachers)}</div>
+  </div>`;
+}
+function adTeacherRows(list){
+  if(!list.length) return '<div class="empty-state">Chưa có giáo viên</div>';
+  return list.map(([uid,u])=>`
+    <div class="list-row">
+      <span>${esc(u.name)} <span class="meta">(${uid})</span></span>
+      <span style="display:flex; gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="adEditTeacher('${uid}')">Sửa</button>
+        <button class="btn btn-danger btn-sm" onclick="adDeleteTeacher('${uid}')">Xoá</button>
+      </span>
+    </div>`).join('');
+}
+function adFilterTeachers(){
+  const q = document.getElementById('tcx-search').value.trim().toLowerCase();
+  const users = DB.get('users') || {};
+  const teachers = Object.entries(users).filter(([uid,u])=>u.role==='teacher' && uid.toLowerCase().includes(q));
+  document.getElementById('tcx-list').innerHTML = adTeacherRows(teachers);
+}
+async function adAddTeacher(){
+  const uid = document.getElementById('tc-uid').value.trim();
+  const name = document.getElementById('tc-add-name').value.trim();
+  const phone = document.getElementById('tc-add-phone').value.trim();
+  const bankName = document.getElementById('tc-add-bank').value.trim();
+  const accountNumber = document.getElementById('tc-add-acc').value.trim();
+  if(!uid || !name){ toast('Nhập đủ UID và họ tên', 'error'); return; }
+  if(DB.get('users/'+uid)){ toast('UID đã tồn tại', 'error'); return; }
+  let qr = '';
+  const qrFile = document.getElementById('tc-add-qr').files[0];
+  if(qrFile) qr = await fileToBase64(qrFile);
+  DB.set('users/'+uid, { role:'teacher', name, phone, bankName, accountNumber, qr });
+  toast('Đã thêm giáo viên', 'ok');
+  adRefresh();
+}
+function adEditTeacher(uid){
+  const u = DB.get('users/'+uid);
+  openModal(`
+    <div class="modal-head"><h3>Sửa giáo viên</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <label class="f-label">Họ và tên</label><input id="edt-name" value="${esc(u.name)}">
+    <label class="f-label">SĐT</label><input id="edt-phone" value="${esc(u.phone||'')}">
+    <label class="f-label">Tên ngân hàng</label><input id="edt-bank" value="${esc(u.bankName||'')}">
+    <label class="f-label">Số tài khoản</label><input id="edt-acc" value="${esc(u.accountNumber||'')}">
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adSaveTeacher('${uid}')">Lưu</button>
+  `);
+}
+function adSaveTeacher(uid){
+  const u = DB.get('users/'+uid);
+  u.name = document.getElementById('edt-name').value.trim();
+  u.phone = document.getElementById('edt-phone').value.trim();
+  u.bankName = document.getElementById('edt-bank').value.trim();
+  u.accountNumber = document.getElementById('edt-acc').value.trim();
+  DB.set('users/'+uid, u);
+  closeModal(); toast('Đã lưu', 'ok'); adRefresh();
+}
+function adDeleteTeacher(uid){
+  if(!confirm('Xoá giáo viên '+uid+'?')) return;
+  DB.set('users/'+uid, null);
+  toast('Đã xoá', 'ok'); adRefresh();
+}
+
+/* ---- Module: Học phí ---- */
+function adModTuition(){
+  const classes = DB.get('classes') || {};
+  return `
+  <div class="card">
+    <div class="section-title">Thêm học phí</div>
+    <label class="f-label">Chọn lớp</label>
+    <select id="tuf-class" onchange="adFillTuitionStudentSelect()">
+      <option value="">-- Chọn lớp --</option>
+      ${Object.entries(classes).map(([id,cl])=>`<option value="${id}">${esc(cl.name)}</option>`).join('')}
+    </select>
+    <label class="f-label">Chọn học viên</label>
+    <select id="tuf-student"><option value="">-- Chọn học viên --</option></select>
+    <label class="f-label">Tên học phí</label><input id="tuf-title" placeholder="VD: Học phí tháng 7">
+    <label class="f-label">Số tiền</label><input type="number" id="tuf-amount">
+    <label class="f-label">Chiết khấu</label><input type="number" id="tuf-discount" value="0">
+    <label class="f-label">Nội dung chiết khấu</label><input id="tuf-reason" placeholder="Không bắt buộc">
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adAddTuitionItem()">THÊM</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Xem học phí</div>
+    <input id="tux-search" placeholder="Tìm theo tên học viên" oninput="adRenderTuitionActiveList()" style="margin-bottom:10px;">
+    <div id="tux-list">${adTuitionActiveRows()}</div>
+  </div>
+  <div class="card">
+    <div class="section-title">Lịch sử</div>
+    <div id="tux-history">${adTuitionHistoryRows()}</div>
+  </div>`;
+}
+function adFillTuitionStudentSelect(){
+  const classId = document.getElementById('tuf-class').value;
+  const sel = document.getElementById('tuf-student');
+  if(!classId){ sel.innerHTML = '<option value="">-- Chọn học viên --</option>'; return; }
+  const cl = DB.get('classes/'+classId);
+  sel.innerHTML = '<option value="">-- Chọn học viên --</option>' + (cl.students||[]).map(uid=>`<option value="${uid}">${esc(DB.get('users/'+uid).name)}</option>`).join('');
+}
+function adAddTuitionItem(){
+  const uid = document.getElementById('tuf-student').value;
+  const title = document.getElementById('tuf-title').value.trim();
+  const amount = Number(document.getElementById('tuf-amount').value)||0;
+  const discount = Number(document.getElementById('tuf-discount').value)||0;
+  const reason = document.getElementById('tuf-reason').value.trim();
+  if(!uid || !title || !amount){ toast('Nhập đủ học viên, tên học phí và số tiền', 'error'); return; }
+  const u = DB.get('users/'+uid);
+  const id = 'TU'+Date.now();
+  DB.set('tuition/'+uid+'/'+id, {
+    title, amount, discount, discountReason:reason, voucherCode:'', voucherAmount:0,
+    status:'unpaid', receipt:'', method:'', paidAt:null, uname:u.name||uid, createdAt:Date.now()
+  });
+  toast('Đã thêm học phí', 'ok');
+  document.getElementById('tuf-title').value=''; document.getElementById('tuf-amount').value='';
+  document.getElementById('tuf-discount').value='0'; document.getElementById('tuf-reason').value='';
+  adRefresh();
+}
+function adTuitionActiveRows(){
+  const all = DB.get('tuition') || {};
+  const q = (document.getElementById('tux-search') && document.getElementById('tux-search').value.trim().toLowerCase()) || '';
+  let rows = [];
+  Object.entries(all).forEach(([uid, items])=>{
+    Object.entries(items||{}).forEach(([itemId,t])=>{
+      if(t.status==='unpaid' || t.status==='pending') rows.push([uid,itemId,t]);
+    });
+  });
+  if(q) rows = rows.filter(([,,t])=> (t.uname||'').toLowerCase().includes(q));
+  rows.sort((a,b)=> (b[2].createdAt||0)-(a[2].createdAt||0));
+  if(!rows.length) return '<div class="empty-state">Không có khoản học phí nào cần xử lý</div>';
+  return rows.map(([uid,itemId,t])=>`
+    <div class="list-row">
+      <span>${esc(t.uname)} <span class="meta">${esc(t.title)} · ${fmtVND(t.amount)} · ${t.status==='pending'?(t.autoCredited?'⏳ Chờ duyệt (đã trừ tự động)':'⏳ Chờ duyệt'):'🔴 Chưa đóng'}</span></span>
+      <span style="display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;">
+        ${t.receipt ? `<button class="btn btn-ghost btn-sm" onclick="adViewReceipt('${esc(t.receipt)}')">Biên lai</button>`:''}
+        ${t.status==='pending' ? `<button class="btn btn-ok btn-sm" onclick="adApproveTuitionItem('${uid}','${itemId}',true)">Duyệt</button><button class="btn btn-danger btn-sm" onclick="adApproveTuitionItem('${uid}','${itemId}',false)">Từ chối</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="adResetTuitionItem('${uid}','${itemId}')">Xoá</button>
+      </span>
+    </div>`).join('');
+}
+function adRenderTuitionActiveList(){
+  const box = document.getElementById('tux-list');
+  if(box) box.innerHTML = adTuitionActiveRows();
+}
+// Hoàn lại phần VIP/PN-Point/lịch sử đã cộng khi một khoản học phí từng được
+// tự động trừ (do học viên gửi biên lai) nhưng sau đó bị admin từ chối hoặc xoá.
+function tuitionRefundAutoCredit(uid, t){
+  const total = Math.max(0, (t.amount||0) - (t.voucherAmount||0) - (t.discount||0));
+  const vip = DB.get('vip/'+uid) || { accumulated:0 };
+  vip.accumulated = Math.max(0, (vip.accumulated||0) - (t.total || total || 0));
+  DB.set('vip/'+uid, vip);
+  const cfg = DB.get('pnpointConfig') || {};
+  const pp = DB.get('pnpoint/'+uid) || { points:1000, history:[] };
+  pp.points = Math.max(0, (pp.points||0) - (cfg.onTimeBonus||0));
+  pp.history = pp.history||[]; pp.history.push({ name:'Hoàn tác học phí bị từ chối', points:-(cfg.onTimeBonus||0), at:Date.now(), type:'tuition' });
+  trimHistory(pp.history, 50, 25);
+  DB.set('pnpoint/'+uid, pp);
+  const log = DB.get('tuitionHistoryLog/'+uid) || [];
+  log.push({ title:t.title, amount:t.amount, uname:t.uname, status:'Từ chối - đã hoàn tiền', at:Date.now() });
+  trimHistory(log, 50, 25);
+  DB.set('tuitionHistoryLog/'+uid, log);
+}
+function adResetTuitionItem(uid, itemId){
+  if(!confirm('Reset lại khoản học phí này từ đầu (về trạng thái Chưa đóng)?')) return;
+  const t = DB.get('tuition/'+uid+'/'+itemId);
+  if(!t) return;
+  // Nếu khoản này đã từng được trừ tự động (học viên gửi biên lai) thì phải
+  // hoàn lại số tiền/điểm đã cộng trước khi đưa về trạng thái Chưa đóng.
+  if(t.autoCredited) tuitionRefundAutoCredit(uid, t);
+  t.status = 'unpaid'; t.receipt=''; t.method=''; t.paidAt=null; t.autoCredited=false;
+  DB.set('tuition/'+uid+'/'+itemId, t);
+  toast('Đã reset khoản học phí', 'ok');
+  adRefresh();
+}
+function adApproveTuitionItem(uid, itemId, approve){
+  const t = DB.get('tuition/'+uid+'/'+itemId);
+  if(!t) return;
+  if(approve){
+    if(t.autoCredited){
+      // Số tiền này đã được trừ thẳng ngay khi học viên gửi biên lai —
+      // duyệt ở đây chỉ là xác nhận/chốt lại, không cộng dồn VIP/điểm lần nữa.
+      DB.set('tuition/'+uid+'/'+itemId, null);
+      toast('Đã xác nhận (khoản này đã được trừ tự động trước đó)', 'ok');
+      adRefresh();
+      return;
+    }
+    const log = DB.get('tuitionHistoryLog/'+uid) || [];
+    log.push({ title:t.title, amount:t.amount, uname:t.uname, status:'Đã đóng', at:Date.now() });
+    trimHistory(log, 50, 25);
+    DB.set('tuitionHistoryLog/'+uid, log);
+    // Cộng dồn VIP + PN-Point khi duyệt học phí
+    const total = Math.max(0, (t.amount||0) - (t.voucherAmount||0) - (t.discount||0));
+    const vip = DB.get('vip/'+uid) || { accumulated:0 };
+    vip.accumulated = (vip.accumulated||0) + (t.total || total || 0);
+    DB.set('vip/'+uid, vip);
+    const cfg = DB.get('pnpointConfig') || {};
+    const pp = DB.get('pnpoint/'+uid) || { points:1000, history:[] };
+    pp.points = (pp.points||0) + (cfg.onTimeBonus||0);
+    pp.history = pp.history||[]; pp.history.push({ name:'Đóng học phí đúng hạn', points:cfg.onTimeBonus||0, at:Date.now(), type:'tuition' });
+    trimHistory(pp.history, 50, 25);
+    DB.set('pnpoint/'+uid, pp);
+    // Đã hoàn tất — gỡ khỏi danh sách khoản cần xử lý
+    DB.set('tuition/'+uid+'/'+itemId, null);
+  } else {
+    if(t.autoCredited){
+      // Khoản này đã được trừ tự động lúc học viên gửi biên lai, nay admin
+      // từ chối -> phải hoàn lại số tiền/điểm đã cộng cho học viên.
+      tuitionRefundAutoCredit(uid, t);
+    } else {
+      const log = DB.get('tuitionHistoryLog/'+uid) || [];
+      log.push({ title:t.title, amount:t.amount, uname:t.uname, status:'Chưa đóng', at:Date.now() });
+      trimHistory(log, 50, 25);
+      DB.set('tuitionHistoryLog/'+uid, log);
+    }
+    // Từ chối: trả về trạng thái chưa đóng để học viên đóng lại
+    t.status = 'unpaid'; t.receipt=''; t.method=''; t.paidAt=null; t.autoCredited=false;
+    DB.set('tuition/'+uid+'/'+itemId, t);
+  }
+  toast(approve?'Đã duyệt học phí':'Đã từ chối', approve?'ok':'error');
+  adRefresh();
+}
+function adViewReceipt(src){ openModal(`<div class="modal-head"><h3>Biên lai</h3><button class="modal-close" onclick="closeModal()">✕</button></div><img src="${src}" style="width:100%; border-radius:10px;">`, {center:true}); }
+function adTuitionHistoryRows(){
+  const all = DB.get('tuitionHistoryLog') || {};
+  let rows = [];
+  Object.values(all).forEach(log=>{ (log||[]).forEach(h=> rows.push(h)); });
+  rows.sort((a,b)=> (b.at||0)-(a.at||0));
+  if(!rows.length) return '<div class="empty-state">Chưa có lịch sử</div>';
+  return rows.slice(0,50).map(h=>`
+    <div class="list-row"><span>${esc(h.uname)} <span class="meta">${esc(h.title)}</span></span><span class="meta">${fmtVND(h.amount)} · ${h.status==='Đã đóng'?'Đã đóng':'Chưa đóng'}</span></div>`).join('');
+}
+
+
+/* ---- Module: Quảng cáo ---- */
+function adModAds(){
+  const ads = DB.get('ads') || {};
+  return `
+  <div class="card">
+    <div class="section-title">Thêm quảng cáo</div>
+    <label class="f-label">Màu nền</label>
+    <select id="ad-color">
+      <option value="var(--ad-blue)" selected>🔵 Xanh navy (mặc định)</option>
+      <option value="var(--ad-teal)">🟢 Xanh ngọc</option>
+      <option value="var(--ad-amber)">🟡 Vàng đồng</option>
+      <option value="var(--ad-rose)">🔴 Đỏ rượu vang</option>
+      <option value="var(--ad-violet)">🟣 Tím than</option>
+      <option value="var(--ad-slate)">⚪ Xám xanh</option>
+    </select>
+    <div class="muted" style="margin-top:4px;">Đã chọn tông màu trầm, dịu mắt — hiển thị tốt cả nền sáng và nền tối, không bị chói.</div>
+    <label class="f-label">Icon (emoji)</label><input id="ad-icon" placeholder="🎉">
+    <label class="f-label">Tiêu đề</label><input id="ad-title">
+    <label class="f-label">Nội dung</label><textarea id="ad-content" rows="2"></textarea>
+    <label class="f-label">Thời gian kết thúc</label><input type="date" id="ad-end">
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adAddAd()">THÊM</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Bảng quảng cáo</div>
+    ${!Object.keys(ads).length ? '<div class="empty-state">Chưa có quảng cáo</div>' : Object.entries(ads).map(([id,a])=>`
+      <div class="list-row">
+        <span>${esc(a.icon)} ${esc(a.title)}</span>
+        <span style="display:flex; gap:6px; align-items:center;">
+          <span class="meta">${a.endTime ? new Date(a.endTime).toLocaleDateString('vi-VN') : '—'}</span>
+          <button class="btn btn-danger btn-sm" onclick="adDeleteAd('${id}')">Xoá</button>
+        </span>
+      </div>`).join('')}
+  </div>`;
+}
+function adAddAd(){
+  const color = document.getElementById('ad-color').value;
+  const icon = document.getElementById('ad-icon').value.trim() || '📣';
+  const title = document.getElementById('ad-title').value.trim();
+  const content = document.getElementById('ad-content').value.trim();
+  const endStr = document.getElementById('ad-end').value;
+  if(!title){ toast('Nhập tiêu đề', 'error'); return; }
+  const id = 'ad'+Date.now();
+  DB.set('ads/'+id, { color, icon, title, content, endTime: endStr ? new Date(endStr).getTime() : null });
+  toast('Đã thêm quảng cáo', 'ok'); adRefresh();
+}
+function adDeleteAd(id){ if(!confirm('Xoá quảng cáo này?'))return; DB.set('ads/'+id, null); toast('Đã xoá', 'ok'); adRefresh(); }
+
+/* ---- Module: Mua hàng (quản trị sản phẩm + đơn) ---- */
+function adModShop(){
+  const products = DB.get('products') || {};
+  const purchases = DB.get('purchases') || {};
+  const vouchers = DB.get('vouchers') || {};
+  const activeShopVouchers = Object.entries(vouchers).filter(([,v])=> (v.type==='shop'||v.type==='both') && !v.used && !v.revoked && (!v.expiry || v.expiry>Date.now()));
+  const pending = Object.entries(purchases).filter(([,p])=>p.status==='pending');
+  const history = Object.entries(purchases).filter(([,p])=>p.status!=='pending').sort((a,b)=>b[1].createdAt-a[1].createdAt);
+  return `
+  <div class="card">
+    <div class="row"><div class="section-title" style="margin:0;">🎟️ Voucher mua sắm còn hiệu lực</div><button class="btn btn-ghost btn-sm" onclick="adSwitchTab('voucher')">Quản lý</button></div>
+    <div style="margin-top:8px;">
+    ${!activeShopVouchers.length ? '<div class="empty-state">Chưa có voucher mua sắm/chung nào còn hiệu lực</div>' : activeShopVouchers.map(([code,v])=>`
+      <div class="list-row"><span>${esc(code)} <span class="meta">${v.type==='both'?'(dùng chung)':'(mua sắm)'}</span></span><span class="meta">-${fmtVND(v.amount)}</span></div>`).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">Thêm hàng hoá</div>
+    <label class="f-label">Hình ảnh (tối đa 6 ảnh)</label><input type="file" id="pr-images" accept="image/*" multiple>
+    <label class="f-label">Tên hàng</label><input id="pr-name">
+    <label class="f-label">Số tiền</label><input type="number" id="pr-price">
+    <label class="f-label">Giảm giá (nếu có)</label><input type="number" id="pr-discount" value="0">
+    <label class="f-label">Nội dung</label><textarea id="pr-content" rows="2"></textarea>
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adAddProduct()">THÊM</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Hàng hoá</div>
+    ${!Object.keys(products).length?'<div class="empty-state">Chưa có sản phẩm</div>':Object.entries(products).map(([id,p])=>`
+      <div class="list-row">
+        <span>${esc(p.name)} <span class="meta">${fmtVND(p.price)}</span></span>
+        <span style="display:flex; gap:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="adViewProduct('${id}')">Xem</button>
+          <button class="btn btn-danger btn-sm" onclick="adDeleteProduct('${id}')">Xoá</button>
+        </span>
+      </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="section-title">Người mua hàng (chờ duyệt)</div>
+    ${!pending.length ? '<div class="empty-state">Không có đơn chờ duyệt</div>' : pending.map(([id,p])=>`
+      <div class="list-row">
+        <span>${esc(p.buyerUid)} — ${esc(p.productName)}${p.voucherCode?` <span class="meta">🎟️ ${esc(p.voucherCode)} (-${fmtVND(p.voucherAmount)})</span>`:''}</span>
+        <span style="display:flex; gap:6px;">
+          ${p.receipt?`<button class="btn btn-ghost btn-sm" onclick="adViewReceipt('${esc(p.receipt)}')">Biên lai</button>`:''}
+          <button class="btn btn-ok btn-sm" onclick="adApprovePurchase('${id}',true)">Duyệt</button>
+          <button class="btn btn-danger btn-sm" onclick="adApprovePurchase('${id}',false)">Từ chối</button>
+        </span>
+      </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="section-title">Lịch sử mua hàng</div>
+    ${!history.length ? '<div class="empty-state">Chưa có lịch sử</div>' : history.slice(0,20).map(([id,p])=>`
+      <div class="list-row"><span>${esc(p.buyerUid)} — ${esc(p.productName)}${p.voucherCode?` <span class="meta">🎟️ ${esc(p.voucherCode)}</span>`:''}</span><span class="meta">${p.status==='approved'?'Đã mua':'Từ chối'} · ${fmtVND(p.amount)}</span></div>`).join('')}
+  </div>`;
+}
+async function adAddProduct(){
+  const name = document.getElementById('pr-name').value.trim();
+  const price = Number(document.getElementById('pr-price').value)||0;
+  const discount = Number(document.getElementById('pr-discount').value)||0;
+  const content = document.getElementById('pr-content').value.trim();
+  if(!name || !price){ toast('Nhập đủ tên hàng và số tiền', 'error'); return; }
+  const files = Array.from(document.getElementById('pr-images').files).slice(0,6);
+  const images = [];
+  for(const f of files) images.push(await fileToBase64(f));
+  const id = 'P'+Date.now();
+  DB.set('products/'+id, { name, price, discount, content, images, forRole:'all' });
+  toast('Đã thêm sản phẩm', 'ok'); adRefresh();
+}
+function adViewProduct(id){
+  const p = DB.get('products/'+id);
+  openModal(`
+    <div class="modal-head"><h3>${esc(p.name)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="thumb-row">${(p.images||[]).map(img=>`<img src="${img}">`).join('') || '<span class="muted">Không có ảnh</span>'}</div>
+    <p class="muted">${esc(p.content||'')}</p>
+    <div class="tuition-line plain"><span>Giá</span><span>${fmtVND(p.price)}</span></div>
+    <div class="tuition-line plain"><span>Giảm giá</span><span>${fmtVND(p.discount||0)}</span></div>
+  `, {center:true});
+}
+function adDeleteProduct(id){ if(!confirm('Xoá sản phẩm?'))return; DB.set('products/'+id, null); toast('Đã xoá', 'ok'); adRefresh(); }
+function adApprovePurchase(id, approve){
+  const p = DB.get('purchases/'+id);
+  p.status = approve ? 'approved' : 'rejected';
+  DB.set('purchases/'+id, p);
+  if(approve){
+    const vip = DB.get('vip/'+p.buyerUid) || { accumulated:0 };
+    vip.accumulated = (vip.accumulated||0) + p.amount;
+    DB.set('vip/'+p.buyerUid, vip);
+    const cfg = DB.get('pnpointConfig') || {};
+    const pp = DB.get('pnpoint/'+p.buyerUid) || { points:1000, history:[] };
+    pp.points = (pp.points||0) + (cfg.shoppingBonus||0);
+    pp.history = pp.history||[]; pp.history.push({ name:'Mua sắm: '+p.productName, points:cfg.shoppingBonus||0, at:Date.now(), type:'shopping' });
+    trimHistory(pp.history, 50, 25);
+    DB.set('pnpoint/'+p.buyerUid, pp);
+  }
+  toast(approve?'Đã duyệt đơn mua':'Đã từ chối', approve?'ok':'error');
+  adRefresh();
+}
+
+/* ---- Module: Gói tài nguyên bên ngoài (Gói TN bên ngoài) ---- */
+function adModResPkg(){
+  const packages = DB.get('resPackages') || {};
+  const requests = DB.get('resRequests') || {};
+  const pending = Object.entries(requests).filter(([,r])=>r.status==='pending').sort((a,b)=>a[1].createdAt-b[1].createdAt);
+  const history = (DB.get('resHistory') || []).slice().reverse();
+  return `
+  <div class="card">
+    <div class="section-title">➕ Gói thanh toán</div>
+    <label class="f-label">Tên gói</label><input id="rp-name" placeholder="VD: Gói tài liệu nâng cao">
+    <label class="f-label">Icon (emoji)</label><input id="rp-icon" placeholder="📦">
+    <label class="f-label">Mô tả</label><textarea id="rp-desc" rows="2"></textarea>
+    <label class="f-label">1 tháng</label><input type="number" id="rp-p1" placeholder="Bỏ trống nếu không dùng">
+    <label class="f-label">3 tháng</label><input type="number" id="rp-p3" placeholder="Bỏ trống nếu không dùng">
+    <label class="f-label">6 tháng</label><input type="number" id="rp-p6" placeholder="Bỏ trống nếu không dùng">
+    <label class="f-label">12 tháng</label><input type="number" id="rp-p12" placeholder="Bỏ trống nếu không dùng">
+    <label class="f-label">24 tháng</label><input type="number" id="rp-p24" placeholder="Bỏ trống nếu không dùng">
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adAddResPackage()">Thêm</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Danh sách gói</div>
+    ${!Object.keys(packages).length ? '<div class="empty-state">Chưa có gói tài nguyên nào</div>' : Object.entries(packages).map(([id,p])=>`
+      <div class="pkg-row">
+        <div class="row"><span style="font-weight:800;">${esc(p.icon||'📦')} ${esc(p.name)}</span><button class="btn btn-danger btn-sm" onclick="adDeleteResPackage('${id}')">Xoá</button></div>
+        ${p.desc?`<div class="muted" style="margin-top:4px;">${esc(p.desc)}</div>`:''}
+        <div class="muted" style="margin-top:6px;">${RESPKG_MONTHS.filter(m=>(p.prices||{})[m.key]).map(m=>`${m.label}: ${fmtVND((p.prices||{})[m.key])}`).join(' · ') || 'Chưa có giá nào'}</div>
+      </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="section-title">Duyệt</div>
+    ${!pending.length ? '<div class="empty-state">Không có yêu cầu chờ duyệt</div>' : pending.map(([id,r])=>`
+      <div class="list-row">
+        <span>${esc(r.uname)} <span class="meta">${esc(r.pkgName)} · ${r.months} tháng · ${fmtVND(r.amount)}</span></span>
+        <span style="display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;">
+          ${r.receipt?`<button class="btn btn-ghost btn-sm" onclick="adViewReceipt('${esc(r.receipt)}')">Biên lai</button>`:''}
+          <button class="btn btn-ok btn-sm" onclick="adApproveResRequest('${id}',true)">Duyệt</button>
+          <button class="btn btn-danger btn-sm" onclick="adApproveResRequest('${id}',false)">Từ chối</button>
+        </span>
+      </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="section-title">Lịch sử</div>
+    ${!history.length ? '<div class="empty-state">Chưa có lịch sử</div>' : history.map(h=>{
+      const daysLeft = h.status==='approved' ? Math.max(0, Math.ceil((h.expiresAt-Date.now())/(24*3600*1000))) : null;
+      return `<div class="list-row"><span>${esc(h.uname)} <span class="meta">${esc(h.pkgName)}</span></span><span class="meta">${h.status==='approved' ? 'Còn '+daysLeft+' ngày' : 'Đã từ chối'}</span></div>`;
+    }).join('')}
+  </div>`;
+}
+function adAddResPackage(){
+  const name = document.getElementById('rp-name').value.trim();
+  const icon = document.getElementById('rp-icon').value.trim() || '📦';
+  const desc = document.getElementById('rp-desc').value.trim();
+  const prices = {};
+  ['1','3','6','12','24'].forEach(k=>{
+    const v = Number(document.getElementById('rp-p'+k).value)||0;
+    if(v>0) prices[k] = v;
+  });
+  if(!name){ toast('Nhập tên gói', 'error'); return; }
+  if(!Object.keys(prices).length){ toast('Nhập giá cho ít nhất một mốc thời gian', 'error'); return; }
+  const id = 'RP'+Date.now();
+  DB.set('resPackages/'+id, { name, icon, desc, prices });
+  toast('Đã thêm gói tài nguyên', 'ok');
+  adRefresh();
+}
+function adDeleteResPackage(id){ if(!confirm('Xoá gói tài nguyên này?'))return; DB.set('resPackages/'+id, null); toast('Đã xoá', 'ok'); adRefresh(); }
+function adApproveResRequest(id, approve){
+  const r = DB.get('resRequests/'+id);
+  if(!r) return;
+  const history = DB.get('resHistory') || [];
+  if(approve){
+    const expiresAt = Date.now() + r.months*30*24*3600*1000;
+    history.push({ uid:r.uid, uname:r.uname, pkgName:r.pkgName, months:r.months, status:'approved', expiresAt, approvedAt:Date.now() });
+  } else {
+    history.push({ uid:r.uid, uname:r.uname, pkgName:r.pkgName, months:r.months, status:'rejected', approvedAt:Date.now() });
+  }
+  trimHistory(history, 60, 30);
+  DB.set('resHistory', history);
+  DB.set('resRequests/'+id, null);
+  toast(approve?'Đã duyệt gói tài nguyên':'Đã từ chối', approve?'ok':'error');
+  adRefresh();
+}
+
+/* ---- Module: Voucher ---- */
+function adModVoucher(){
+  const vouchers = DB.get('vouchers') || {};
+  const rows = Object.entries(vouchers);
+  return `
+  <div class="card">
+    <div class="accordion open" id="voucher-acc-hp">
+      <div class="accordion-head" onclick="toggleAcc('voucher-acc-hp')"><span>🔽 Voucher học phí</span><span class="accordion-arrow">⌄</span></div>
+      <div class="accordion-body">
+        <label class="f-label">Voucher (12 kí tự, tự sinh nếu để trống)</label>
+        <div style="display:flex; gap:6px;"><input id="vc-hp-code" placeholder="XF..."><button class="btn btn-ghost btn-sm" onclick="document.getElementById('vc-hp-code').value=genVoucherCode('XF')">Tạo mã</button></div>
+        <label class="f-label">Số tiền</label><input type="number" id="vc-hp-amount">
+        <label class="f-label">Thời hạn kết thúc</label><input type="datetime-local" id="vc-hp-expiry">
+        <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="adAddVoucher('tuition','vc-hp-code','vc-hp-amount','vc-hp-expiry')">THÊM</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="accordion" id="voucher-acc-mg">
+      <div class="accordion-head" onclick="toggleAcc('voucher-acc-mg')"><span>🔽 Voucher mua sắm</span><span class="accordion-arrow">⌄</span></div>
+      <div class="accordion-body">
+        <label class="f-label">Voucher (12 kí tự)</label>
+        <div style="display:flex; gap:6px;"><input id="vc-mg-code" placeholder="MG..."><button class="btn btn-ghost btn-sm" onclick="document.getElementById('vc-mg-code').value=genVoucherCode('MG')">Tạo mã</button></div>
+        <label class="f-label">Số tiền</label><input type="number" id="vc-mg-amount">
+        <label class="f-label">Thời hạn kết thúc</label><input type="datetime-local" id="vc-mg-expiry">
+        <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="adAddVoucher('shop','vc-mg-code','vc-mg-amount','vc-mg-expiry')">THÊM</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="accordion" id="voucher-acc-xm">
+      <div class="accordion-head" onclick="toggleAcc('voucher-acc-xm')"><span>🔽 Voucher chung</span><span class="accordion-arrow">⌄</span></div>
+      <div class="accordion-body">
+        <label class="f-label">Voucher (12 kí tự)</label>
+        <div style="display:flex; gap:6px;"><input id="vc-xm-code" placeholder="XM..."><button class="btn btn-ghost btn-sm" onclick="document.getElementById('vc-xm-code').value=genVoucherCode('XM')">Tạo mã</button></div>
+        <label class="f-label">Số tiền</label><input type="number" id="vc-xm-amount">
+        <label class="f-label">Thời hạn kết thúc</label><input type="datetime-local" id="vc-xm-expiry">
+        <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="adAddVoucher('both','vc-xm-code','vc-xm-amount','vc-xm-expiry')">THÊM</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">Phiếu voucher</div>
+    ${!rows.length ? '<div class="empty-state">Chưa có voucher</div>' : rows.map(([code,v])=>`
+      <div class="list-row">
+        <span>${code}<br><span class="meta">${fmtVND(v.amount)} · ${v.type==='tuition'?'Học phí':v.type==='shop'?'Mua sắm':'Chung'} · ${v.revoked?'Đã thu hồi':v.used?'Đã dùng':'Chưa dùng'} · Hạn: ${v.expiry?new Date(v.expiry).toLocaleString('vi-VN'):'—'}</span></span>
+        <span style="display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm" onclick="adCopyVoucher('${code}')">Sao chép</button>
+          <button class="btn btn-ghost btn-sm" onclick="adRevokeVoucher('${code}')">Thu hồi</button>
+          <button class="btn btn-danger btn-sm" onclick="adDeleteVoucher('${code}')">Xoá</button>
+        </span>
+      </div>`).join('')}
+  </div>`;
+}
+function adAddVoucher(type, codeId, amountId, expiryId){
+  let code = document.getElementById(codeId).value.trim().toUpperCase();
+  const prefix = type==='tuition'?'XF':type==='shop'?'MG':'XM';
+  if(!code) code = genVoucherCode(prefix);
+  if(code.length !== 12){ toast('Voucher phải gồm đúng 12 kí tự', 'error'); return; }
+  const amount = Number(document.getElementById(amountId).value)||0;
+  const expiryStr = document.getElementById(expiryId).value;
+  if(!amount){ toast('Nhập số tiền', 'error'); return; }
+  if(DB.get('vouchers/'+code)){ toast('Mã voucher đã tồn tại', 'error'); return; }
+  DB.set('vouchers/'+code, { amount, type, expiry: expiryStr? new Date(expiryStr).getTime():null, used:false, revoked:false });
+  toast('Đã tạo voucher '+code, 'ok'); adRefresh();
+}
+function adCopyVoucher(code){
+  navigator.clipboard.writeText(code).then(()=>toast('Đã sao chép '+code, 'ok')).catch(()=>toast('Không thể sao chép', 'error'));
+}
+function adRevokeVoucher(code){
+  const v = DB.get('vouchers/'+code); v.revoked = !v.revoked; DB.set('vouchers/'+code, v);
+  toast(v.revoked?'Đã thu hồi voucher':'Đã kích hoạt lại', 'ok'); adRefresh();
+}
+function adDeleteVoucher(code){ if(!confirm('Xoá voucher '+code+'?'))return; DB.set('vouchers/'+code, null); toast('Đã xoá', 'ok'); adRefresh(); }
+
+/* ---- Module: VIP ---- */
+function adModVip(){
+  const classes = DB.get('classes') || {};
+  const tiers = DB.get('vipConfig/tiers') || [];
+  const explain = DB.get('vipConfig/explain') || '';
+  return `
+  <div class="card">
+    <div class="section-title">Điều chỉnh tích lũy VIP</div>
+    <label class="f-label">Chọn lớp</label>
+    <select id="vip-class" onchange="adFillVipStudents('vip-student')"><option value="">-- Chọn lớp --</option>${Object.entries(classes).map(([id,cl])=>`<option value="${id}">${esc(cl.name)}</option>`).join('')}</select>
+    <label class="f-label">Chọn học viên</label>
+    <select id="vip-student" onchange="adShowVipCurrent()"><option value="">-- Chọn học viên --</option></select>
+    <div id="vip-current" class="muted" style="margin:8px 0;"></div>
+    <label class="f-label">Thêm số tiền (âm/dương để cộng dồn)</label>
+    <input type="number" id="vip-add-amount">
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="adSaveVipAmount()">LƯU</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Xoá / Trừ VIP (đặt hạng trực tiếp)</div>
+    <label class="f-label">Chọn lớp</label>
+    <select id="vip2-class" onchange="adFillVipStudents('vip2-student')"><option value="">-- Chọn lớp --</option>${Object.entries(classes).map(([id,cl])=>`<option value="${id}">${esc(cl.name)}</option>`).join('')}</select>
+    <label class="f-label">Chọn học viên</label>
+    <select id="vip2-student"><option value="">-- Chọn học viên --</option></select>
+    <label class="f-label">Chọn gói VIP</label>
+    <select id="vip2-tier"><option value="">Không có hạng</option>${tiers.map(t=>`<option value="${t.key}">${t.icon} ${esc(t.name)}</option>`).join('')}</select>
+    <button class="btn btn-danger" style="width:100%; margin-top:10px;" onclick="adForceSetTier()">THỰC HIỆN</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Thiết lập VIP</div>
+    ${tiers.map((t,i)=>`
+      <div class="accordion" id="vipcfg-${t.key}">
+        <div class="accordion-head" onclick="toggleAcc('vipcfg-${t.key}')"><span>🔽 ${t.icon} ${esc(t.name)}</span><span class="accordion-arrow">⌄</span></div>
+        <div class="accordion-body">
+          <div id="vipcfg-conditions-${t.key}">
+            ${(t.conditions||[]).map((c,ci)=>`<label class="f-label">Điều kiện nạp (đồng)</label><input type="number" value="${c}" onchange="adUpdateVipCondition(${i},${ci},this.value)">`).join('')}
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="adAddVipCondition(${i})">Thêm điều kiện ➕</button>
+        </div>
+      </div>`).join('')}
+    <div class="accordion" id="vipcfg-explain">
+      <div class="accordion-head" onclick="toggleAcc('vipcfg-explain')"><span>🔽 Giải thích nghĩa</span><span class="accordion-arrow">⌄</span></div>
+      <div class="accordion-body">
+        <textarea id="vipcfg-explain-text" rows="3">${esc(explain)}</textarea>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="adSaveVipExplain()">Lưu giải thích</button>
+      </div>
+    </div>
+  </div>`;
+}
+function adFillVipStudents(selectId){
+  const classSel = selectId==='vip-student' ? document.getElementById('vip-class') : document.getElementById('vip2-class');
+  const classId = classSel.value;
+  const sel = document.getElementById(selectId);
+  if(!classId){ sel.innerHTML='<option value="">-- Chọn học viên --</option>'; return; }
+  const cl = DB.get('classes/'+classId);
+  sel.innerHTML = '<option value="">-- Chọn học viên --</option>' + (cl.students||[]).map(uid=>`<option value="${uid}">${esc(DB.get('users/'+uid).name)}</option>`).join('');
+}
+function adShowVipCurrent(){
+  const uid = document.getElementById('vip-student').value;
+  const box = document.getElementById('vip-current');
+  if(!uid){ box.textContent=''; return; }
+  const {vip, current} = computeVipTier(uid);
+  box.textContent = 'Tổng tích lũy hiện tại: ' + fmtVND(vip.accumulated||0) + (current? ' — Hạng: '+current.name : '');
+}
+function adSaveVipAmount(){
+  const uid = document.getElementById('vip-student').value;
+  const amt = Number(document.getElementById('vip-add-amount').value)||0;
+  if(!uid){ toast('Chọn học viên', 'error'); return; }
+  const vip = DB.get('vip/'+uid) || { accumulated:0 };
+  vip.accumulated = (vip.accumulated||0) + amt;
+  DB.set('vip/'+uid, vip);
+  toast('Đã cập nhật VIP', 'ok'); adRefresh();
+}
+function adForceSetTier(){
+  const uid = document.getElementById('vip2-student').value;
+  const tierKey = document.getElementById('vip2-tier').value;
+  if(!uid){ toast('Chọn học viên', 'error'); return; }
+  const tiers = DB.get('vipConfig/tiers') || [];
+  const vip = DB.get('vip/'+uid) || { accumulated:0 };
+  if(!tierKey){ vip.accumulated = 0; }
+  else { const t = tiers.find(x=>x.key===tierKey); vip.accumulated = Math.min(...(t.conditions||[0])); }
+  DB.set('vip/'+uid, vip);
+  toast('Đã thực hiện', 'ok'); adRefresh();
+}
+function adUpdateVipCondition(tierIdx, condIdx, val){
+  const tiers = DB.get('vipConfig/tiers');
+  tiers[tierIdx].conditions[condIdx] = Number(val)||0;
+  DB.set('vipConfig/tiers', tiers);
+}
+function adAddVipCondition(tierIdx){
+  const tiers = DB.get('vipConfig/tiers');
+  tiers[tierIdx].conditions = tiers[tierIdx].conditions || [];
+  tiers[tierIdx].conditions.push(0);
+  DB.set('vipConfig/tiers', tiers);
+  adRefresh();
+}
+function adSaveVipExplain(){
+  DB.set('vipConfig/explain', document.getElementById('vipcfg-explain-text').value);
+  toast('Đã lưu', 'ok');
+}
+
+/* ---- Module: PN-Point ---- */
+function adModPoint(){
+  const classes = DB.get('classes') || {};
+  const cfg = DB.get('pnpointConfig') || { tierBonus:{}, lateRules:[] };
+  const tiers = DB.get('vipConfig/tiers') || [];
+  return `
+  <div class="card">
+    <div class="section-title">Cộng / trừ điểm thủ công</div>
+    <label class="f-label">Chọn lớp</label>
+    <select id="pp-class" onchange="adFillVipStudents('pp-student')"><option value="">-- Chọn lớp --</option>${Object.entries(classes).map(([id,cl])=>`<option value="${id}">${esc(cl.name)}</option>`).join('')}</select>
+    <label class="f-label">Chọn học viên</label>
+    <select id="pp-student"><option value="">-- Chọn học viên --</option></select>
+    <label class="f-label">Thêm số point (âm/dương)</label>
+    <input type="number" id="pp-amount">
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="adSavePoint()">THÊM</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Cấu hình cộng PN-Point</div>
+    <label class="f-label">Mua sắm (mỗi lần): +</label><input type="number" id="ppc-shopping" value="${cfg.shoppingBonus||0}">
+    ${tiers.map(t=>`<label class="f-label">${t.name}: +</label><input type="number" id="ppc-tier-${t.key}" value="${(cfg.tierBonus||{})[t.key]||0}">`).join('')}
+    <label class="f-label">Đóng học phí đúng hạn (mùng 1–6): +</label><input type="number" id="ppc-ontime" value="${cfg.onTimeBonus||0}">
+    <div class="f-label" style="margin-top:10px;">Đóng học phí trễ hạn</div>
+    <div id="ppc-late-rows">
+      ${(cfg.lateRules||[]).map((r,i)=>`
+        <div class="row" style="gap:8px; margin-bottom:6px;">
+          <input type="number" placeholder="Trễ (ngày)" value="${r.days}" onchange="adUpdateLateRule(${i},'days',this.value)">
+          <input type="number" placeholder="Điểm trừ" value="${r.points}" onchange="adUpdateLateRule(${i},'points',this.value)">
+          <button class="btn btn-danger btn-sm" onclick="adDeleteLateRule(${i})">Xoá</button>
+        </div>`).join('')}
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="adAddLateRule()">Thêm điều kiện ➕</button>
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adSavePointConfig()">Lưu cấu hình</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Tra cứu lịch sử</div>
+    <label class="f-label">Chọn lớp</label>
+    <select id="pph-class" onchange="adFillPointStudents()"><option value="">-- Chọn lớp --</option>${Object.entries(classes).map(([id,cl])=>`<option value="${id}">${esc(cl.name)}</option>`).join('')}</select>
+    <label class="f-label">Chọn học viên</label>
+    <select id="pph-student" onchange="adRenderPointHistory()"><option value="">-- Chọn học viên --</option></select>
+    <div id="pph-history" style="margin-top:8px;"></div>
+  </div>`;
+}
+function adFillPointStudents(){
+  const classId = document.getElementById('pph-class').value;
+  const sel = document.getElementById('pph-student');
+  document.getElementById('pph-history').innerHTML = '';
+  if(!classId){ sel.innerHTML = '<option value="">-- Chọn học viên --</option>'; return; }
+  const cl = DB.get('classes/'+classId);
+  sel.innerHTML = '<option value="">-- Chọn học viên --</option>' + (cl.students||[]).map(uid=>`<option value="${uid}">${esc(DB.get('users/'+uid).name)}</option>`).join('');
+}
+function adRenderPointHistory(){
+  const uid = document.getElementById('pph-student').value;
+  const box = document.getElementById('pph-history');
+  if(!uid){ box.innerHTML = ''; return; }
+  const pp = DB.get('pnpoint/'+uid) || { points:1000, history:[] };
+  const rows = (pp.history||[]).slice().reverse();
+  box.innerHTML = `<div class="tuition-line plain"><span>Số point hiện tại</span><span><b>🪙 ${pp.points||0}</b></span></div>` +
+    (!rows.length ? '<div class="empty-state">Chưa có lịch sử</div>' : rows.map(h=>`
+      <div class="list-row"><span>${esc(h.name)}</span><span class="meta">${h.points>0?'+':''}${h.points} 🪙 · ${new Date(h.at).toLocaleDateString('vi-VN')}</span></div>`).join(''));
+}
+function adSavePoint(){
+  const uid = document.getElementById('pp-student').value;
+  const amt = Number(document.getElementById('pp-amount').value)||0;
+  if(!uid){ toast('Chọn học viên', 'error'); return; }
+  const pp = DB.get('pnpoint/'+uid) || { points:1000, history:[] };
+  pp.points = (pp.points||0) + amt;
+  pp.history = pp.history||[]; pp.history.push({ name:'Điều chỉnh thủ công', points:amt, at:Date.now(), type:'manual' });
+  trimHistory(pp.history, 50, 25);
+  DB.set('pnpoint/'+uid, pp);
+  toast('Đã cập nhật point', 'ok'); adRefresh();
+}
+function adUpdateLateRule(i, field, val){
+  const cfg = DB.get('pnpointConfig'); cfg.lateRules[i][field] = Number(val)||0; DB.set('pnpointConfig', cfg);
+}
+function adAddLateRule(){ const cfg = DB.get('pnpointConfig'); cfg.lateRules = cfg.lateRules||[]; cfg.lateRules.push({days:0,points:0}); DB.set('pnpointConfig', cfg); adRefresh(); }
+function adDeleteLateRule(i){ if(!confirm('Xoá điều kiện trễ hạn này?'))return; const cfg = DB.get('pnpointConfig'); cfg.lateRules.splice(i,1); DB.set('pnpointConfig', cfg); toast('Đã xoá điều kiện', 'ok'); adRefresh(); }
+function adSavePointConfig(){
+  const cfg = DB.get('pnpointConfig') || {};
+  cfg.shoppingBonus = Number(document.getElementById('ppc-shopping').value)||0;
+  cfg.onTimeBonus = Number(document.getElementById('ppc-ontime').value)||0;
+  cfg.tierBonus = cfg.tierBonus || {};
+  (DB.get('vipConfig/tiers')||[]).forEach(t=>{
+    const el = document.getElementById('ppc-tier-'+t.key);
+    if(el) cfg.tierBonus[t.key] = Number(el.value)||0;
+  });
+  DB.set('pnpointConfig', cfg);
+  toast('Đã lưu cấu hình', 'ok');
+}
+
+/* ---- Module: Lương giáo viên ---- */
+function adModSalary(){
+  const users = DB.get('users') || {};
+  const teachers = Object.entries(users).filter(([,u])=>u.role==='teacher');
+  return `
+  <div class="card">
+    <div class="section-title">Thanh toán lương</div>
+    <label class="f-label">Chọn giáo viên</label>
+    <select id="sal-teacher"><option value="">-- Chọn giáo viên --</option>${teachers.map(([uid,u])=>`<option value="${uid}">${esc(u.name)}</option>`).join('')}</select>
+    <label class="f-label">Tên lương</label><input id="sal-title" placeholder="VD: Lương tháng 7">
+    <label class="f-label">Số tiền</label><input type="number" id="sal-amount">
+    <button class="btn btn-ok" style="width:100%; margin-top:12px;" onclick="adPaySalaryDirect()">ĐÃ CHI TRẢ</button>
+  </div>
+  <div class="card">
+    <div class="section-title">Lịch sử</div>
+    <div id="sal-history-card">${adSalaryHistoryRows()}</div>
+  </div>`;
+}
+function adSalaryHistoryRows(){
+  const all = DB.get('teacherSalaryLog') || {};
+  let rows = [];
+  Object.entries(all).forEach(([uid,log])=>{ (log||[]).forEach((s,i)=> rows.push({uid, idx:i, ...s})); });
+  rows.sort((a,b)=> (b.at||0)-(a.at||0));
+  if(!rows.length) return '<div class="empty-state">Chưa có lịch sử</div>';
+  return rows.map(h=>`
+    <div class="list-row"><span>${esc(h.uname)} <span class="meta">${esc(h.title)}</span></span>
+      <span style="display:flex; gap:6px; align-items:center;">
+        <span class="meta">${fmtVND(h.amount)} · Đã chi trả</span>
+        <button class="btn btn-danger btn-sm" onclick="adDeleteSalaryHistory('${h.uid}',${h.idx})">Xoá</button>
+      </span></div>`).join('');
+}
+function adPaySalaryDirect(){
+  const uid = document.getElementById('sal-teacher').value;
+  const title = document.getElementById('sal-title').value.trim();
+  const amount = Number(document.getElementById('sal-amount').value)||0;
+  if(!uid || !title || !amount){ toast('Nhập đủ giáo viên, tên lương và số tiền', 'error'); return; }
+  const u = DB.get('users/'+uid);
+  const log = DB.get('teacherSalaryLog/'+uid) || [];
+  log.push({ uid, uname:u.name||uid, title, amount, status:'paid', at:Date.now() });
+  trimHistory(log, 50, 25);
+  DB.set('teacherSalaryLog/'+uid, log);
+  toast('Đã chi trả lương', 'ok');
+  adRefresh();
+}
+function adDeleteSalaryHistory(uid, idx){
+  if(!confirm('Xoá (reset) mục lương này? Hành động này không thể hoàn tác.')) return;
+  const log = DB.get('teacherSalaryLog/'+uid) || [];
+  log.splice(idx, 1);
+  DB.set('teacherSalaryLog/'+uid, log);
+  toast('Đã xoá lịch sử lương', 'ok');
+  adRefresh();
+}
+
+
+/* ---- Module: Cấu hình ngân hàng (bổ sung cho QR đóng học phí / mua hàng) ---- */
+function adModSettings(){
+  const bankTuition = DB.get('settings/bankTuition') || {};
+  const bankShop = DB.get('settings/bankShop') || {};
+  const bankResPkg = DB.get('settings/bankResPkg') || {};
+  return `
+  <div class="card">
+    <div class="section-title">⚙️ Thông tin nhận tiền học phí (dùng cho QR đóng học phí)</div>
+    <label class="f-label">Tên ngân hàng</label><input id="set-bank-tu-name" value="${esc(bankTuition.bankName||'')}">
+    <label class="f-label">Số tài khoản</label><input id="set-bank-tu-acc" value="${esc(bankTuition.accountNumber||'')}">
+    <label class="f-label">Chủ tài khoản</label><input id="set-bank-tu-holder" value="${esc(bankTuition.accountHolder||'')}">
+    <label class="f-label">Mã QR code (ảnh)</label>
+    ${bankTuition.qr?`<div class="qr-box"><img src="${bankTuition.qr}"></div>`:'<div class="muted">Chưa có mã QR — nếu để trống, hệ thống sẽ tự tạo QR từ nội dung chuyển khoản.</div>'}
+    <input type="file" id="set-bank-tu-qr" accept="image/*">
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adSaveBankSettings('tuition')">Lưu</button>
+  </div>
+  <div class="card">
+    <div class="section-title">⚙️ Thông tin nhận tiền mua sắm (dùng cho QR mua hàng)</div>
+    <label class="f-label">Tên ngân hàng</label><input id="set-bank-sh-name" value="${esc(bankShop.bankName||'')}">
+    <label class="f-label">Số tài khoản</label><input id="set-bank-sh-acc" value="${esc(bankShop.accountNumber||'')}">
+    <label class="f-label">Chủ tài khoản</label><input id="set-bank-sh-holder" value="${esc(bankShop.accountHolder||'')}">
+    <label class="f-label">Mã QR code (ảnh)</label>
+    ${bankShop.qr?`<div class="qr-box"><img src="${bankShop.qr}"></div>`:'<div class="muted">Chưa có mã QR — nếu để trống, hệ thống sẽ tự tạo QR từ nội dung chuyển khoản.</div>'}
+    <input type="file" id="set-bank-sh-qr" accept="image/*">
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adSaveBankSettings('shop')">Lưu</button>
+  </div>
+  <div class="card">
+    <div class="section-title">⚙️ Thông tin nhận tiền gói tài nguyên bên ngoài</div>
+    <label class="f-label">Tên ngân hàng</label><input id="set-bank-rp-name" value="${esc(bankResPkg.bankName||'')}">
+    <label class="f-label">Số tài khoản</label><input id="set-bank-rp-acc" value="${esc(bankResPkg.accountNumber||'')}">
+    <label class="f-label">Chủ tài khoản</label><input id="set-bank-rp-holder" value="${esc(bankResPkg.accountHolder||'')}">
+    <label class="f-label">Mã QR code (ảnh)</label>
+    ${bankResPkg.qr?`<div class="qr-box"><img src="${bankResPkg.qr}"></div>`:'<div class="muted">Chưa có mã QR — nếu để trống, hệ thống sẽ tự tạo QR từ nội dung chuyển khoản.</div>'}
+    <input type="file" id="set-bank-rp-qr" accept="image/*">
+    <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="adSaveBankSettings('respkg')">Lưu</button>
+  </div>`;
+}
+async function adSaveBankSettings(kind){
+  const p = kind==='tuition' ? 'tu' : kind==='shop' ? 'sh' : 'rp';
+  const path = 'settings/bank'+(kind==='tuition'?'Tuition':kind==='shop'?'Shop':'ResPkg');
+  const existing = DB.get(path) || {};
+  let qr = existing.qr || '';
+  const file = document.getElementById('set-bank-'+p+'-qr').files[0];
+  if(file) qr = await fileToBase64(file);
+  DB.set(path, {
+    bankName: document.getElementById('set-bank-'+p+'-name').value.trim(),
+    accountNumber: document.getElementById('set-bank-'+p+'-acc').value.trim(),
+    accountHolder: document.getElementById('set-bank-'+p+'-holder').value.trim(),
+    qr
+  });
+  toast('Đã lưu cấu hình ngân hàng', 'ok');
+  adRefresh();
+}
+
+/* ---------------- Khởi động ---------------- */
+// Không còn tải sẵn dữ liệu khi vừa mở trang. Ta chỉ chờ Firebase Auth cho biết
+// đang là ai: nếu là phiên Admin thật (đã đăng nhập Email/Password trước đó và
+// Firebase tự nhớ), vào thẳng trang Admin; nếu chưa có ai / đang ẩn danh, thử
+// khôi phục UID học viên/giáo viên đã nhớ trong localStorage như cũ.
+window.onload = ()=>{
+  fbAuth.onAuthStateChanged(async user=>{
+    if(!user){
+      fbAuth.signInAnonymously().catch(err=>{
+        console.error('Lỗi đăng nhập Firebase (anonymous):', err);
+        toast('Không thể kết nối máy chủ', 'error');
+      });
+      return;
+    }
+    if(!user.isAnonymous){
+      if(SESSION.role==='admin') return; // đã xử lý rồi
+      SESSION = { uid:user.uid, role:'admin' };
+      try{
+        await DB.loadPaths(ADMIN_PATHS);
+        if(!DB.get('seeded')) seed();
+        enterApp();
+      }catch(err){ console.error(err); toast('Không thể tải dữ liệu quản trị', 'error'); }
+      return;
+    }
+    // user ẩn danh: thử tự đăng nhập lại theo UID đã nhớ (nếu có)
+    if(!SESSION.uid){
+      const remembered = localStorage.getItem('pn_remember_uid');
+      if(remembered){
+        document.getElementById('login-uid').value = remembered;
+        doLogin();
+      }
+    }
+  });
+};
+</script>
+</body>
+</html>
