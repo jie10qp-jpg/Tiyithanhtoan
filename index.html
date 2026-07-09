@@ -473,6 +473,11 @@ function genVoucherCode(prefix){
   return prefix + s;
 }
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Firebase Realtime Database cấm các ký tự . # $ [ ] trong key/đường dẫn.
+// UID người dùng nhập (ví dụ gõ nguyên email Gmail) có thể chứa dấu "."
+// nên cần chuẩn hoá về key hợp lệ trước khi dùng làm đường dẫn Firebase.
+// Dùng CHUNG hàm này ở cả lúc tạo tài khoản lẫn lúc đăng nhập để 2 bên luôn khớp nhau.
+function sanitizeKey(s){ return (s||'').trim().replace(/[.#$\[\]]/g, '_'); }
 
 /* ---------------- Modal ---------------- */
 function openModal(html, opts){
@@ -519,8 +524,9 @@ function handleLoginTap(){
 // Khác biệt so với trước: không còn chuỗi "mật khẩu admin ẩn" nào trong JS,
 // và chỉ tải đúng dữ liệu của riêng UID này (xem buildRolePaths ở trên).
 async function doLogin(){
-  const uidInput = document.getElementById('login-uid').value.trim();
-  if(!uidInput){ toast('Vui lòng nhập tài khoản', 'error'); return; }
+  const uidInputRaw = document.getElementById('login-uid').value.trim();
+  if(!uidInputRaw){ toast('Vui lòng nhập tài khoản', 'error'); return; }
+  const uidInput = sanitizeKey(uidInputRaw);
   const btn = document.getElementById('login-uid-btn');
   btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
   try{
@@ -1210,7 +1216,7 @@ function adModStudent(){
   return `
   <div class="card">
     <div class="section-title">Thêm học viên</div>
-    <label class="f-label">UID</label><input id="st-uid" placeholder="VD: HV002">
+    <label class="f-label">UID <span class="muted">(có thể dùng email, dấu . sẽ tự đổi thành _)</span></label><input id="st-uid" placeholder="VD: HV002 hoặc email">
     <label class="f-label">Họ và tên</label><input id="st-name">
     <label class="f-label">Lớp</label>
     <select id="st-class"><option value="">-- Chọn lớp --</option>${Object.entries(classes).map(([id,cl])=>`<option value="${id}">${esc(cl.name)}</option>`).join('')}</select>
@@ -1240,10 +1246,12 @@ function adFilterStudents(){
   document.getElementById('st-list').innerHTML = adStudentRows(students);
 }
 function adAddStudent(){
-  const uid = document.getElementById('st-uid').value.trim();
+  const uidRaw = document.getElementById('st-uid').value.trim();
   const name = document.getElementById('st-name').value.trim();
   const classId = document.getElementById('st-class').value;
-  if(!uid || !name || !classId){ toast('Nhập đủ thông tin', 'error'); return; }
+  if(!uidRaw || !name || !classId){ toast('Nhập đủ thông tin', 'error'); return; }
+  const uid = sanitizeKey(uidRaw);
+  if(!uid){ toast('UID không hợp lệ', 'error'); return; }
   if(DB.get('users/'+uid)){ toast('UID đã tồn tại', 'error'); return; }
   DB.set('users/'+uid, { role:'hv', name, classId });
   const cl = DB.get('classes/'+classId);
@@ -1292,7 +1300,7 @@ function adModTeacher(){
   return `
   <div class="card">
     <div class="section-title">Thêm giáo viên</div>
-    <label class="f-label">UID</label><input id="tc-uid">
+    <label class="f-label">UID <span class="muted">(có thể dùng email, dấu . sẽ tự đổi thành _)</span></label><input id="tc-uid" placeholder="VD: GV002 hoặc email">
     <label class="f-label">Họ và tên</label><input id="tc-add-name">
     <label class="f-label">SĐT</label><input id="tc-add-phone">
     <label class="f-label">Tên ngân hàng</label><input id="tc-add-bank">
@@ -1324,12 +1332,14 @@ function adFilterTeachers(){
   document.getElementById('tcx-list').innerHTML = adTeacherRows(teachers);
 }
 async function adAddTeacher(){
-  const uid = document.getElementById('tc-uid').value.trim();
+  const uidRaw = document.getElementById('tc-uid').value.trim();
   const name = document.getElementById('tc-add-name').value.trim();
   const phone = document.getElementById('tc-add-phone').value.trim();
   const bankName = document.getElementById('tc-add-bank').value.trim();
   const accountNumber = document.getElementById('tc-add-acc').value.trim();
-  if(!uid || !name){ toast('Nhập đủ UID và họ tên', 'error'); return; }
+  if(!uidRaw || !name){ toast('Nhập đủ UID và họ tên', 'error'); return; }
+  const uid = sanitizeKey(uidRaw);
+  if(!uid){ toast('UID không hợp lệ', 'error'); return; }
   if(DB.get('users/'+uid)){ toast('UID đã tồn tại', 'error'); return; }
   let qr = '';
   const qrFile = document.getElementById('tc-add-qr').files[0];
